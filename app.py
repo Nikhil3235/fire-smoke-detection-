@@ -1,0 +1,364 @@
+# ============================================================
+#  🔥 FireVision AI — Enterprise-Grade Safety Monitoring System
+#  Built by NIKHIL MALI (Computer Vision & AI Engineer)
+#  Features: 
+#    - Real-time YOLOv8m Fire & Smoke Inference
+#    - 📱 SMS Emergency Alerts (Twilio API with Simulation Mode)
+#    - 📄 PDF Report Generator (Generates downloadable PDF of all detected events)
+#    - 📹 Live Session Recording (Record AI stream and download as WebM/MP4)
+#    - 🔊 Web Audio API Smart Siren Alarm
+#    - 📸 Auto-saving Alert Frames on detection
+#    - 📊 Real-time Analytics Dashboard with Chart.js
+#    - 📂 Custom File Upload for Video/Image Inference
+# ============================================================
+
+from flask import Flask, Response, jsonify, request, send_from_directory
+from flask_cors import CORS
+from ultralytics import YOLO
+import cv2
+import numpy as np
+import os
+import time
+import threading
+from datetime import datetime
+import werkzeug
+import requests
+
+app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app)
+
+# ── Directories Setup ─────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+ALERTS_FOLDER = os.path.join(BASE_DIR, 'static', 'alerts')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(ALERTS_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# ── Global Variables ──────────────────────────────────────────
+model = None
+camera = None
+is_detecting = False
+current_fps = 0
+detection_log = []
+active_source = "webcam"
+
+# Notification Settings (Configured via UI)
+sms_config = {"enabled": False, "account_sid": "", "auth_token": "", "from_number": "", "to_number": ""}
+
+# Alert cooldown (prevent spamming notifications)
+last_alert_time = 0
+ALERT_COOLDOWN = 10.0  # 10 seconds between notifications
+
+# ── Detection Colors (BGR) ───────────────────────────────────
+CLASS_COLORS = {
+    0: (0, 70, 255),     # Fire (Orange-Red)
+    1: (200, 200, 200),  # Smoke (Gray)
+}
+
+CLASS_NAMES = {0: "Fire", 1: "Smoke"}
+
+
+def load_model(model_path="models/best.pt"):
+    """Load YOLOv8 model, downloading it if not present."""
+    global model
+    if not os.path.exists(model_path):
+        print("📥 Model weights not found. Downloading from Hugging Face...")
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        url = "https://huggingface.co/SHOU-ISD/fire-and-smoke/resolve/main/best.pt"
+        try:
+            import urllib.request
+            urllib.request.urlretrieve(url, model_path)
+            print("✅ Model downloaded successfully!")
+        except Exception as e:
+            print(f"❌ Failed to download model: {e}")
+            return False
+            
+    if os.path.exists(model_path):
+        model = YOLO(model_path)
+        print(f"✅ Model loaded: {model_path}")
+        return True
+    return False
+
+
+def send_sms_alert(label, conf):
+    """Send SMS alert via Twilio."""
+    if not sms_config["enabled"] or not sms_config["to_number"]:
+        return
+    
+    message_body = f"🚨 FireVision AI Alert! {label.upper()} detected with {conf:.0%} confidence at {datetime.now().strftime('%H:%M:%S')}. System monitored by Nikhil Mali."
+    
+    # If Twilio credentials are provided, send actual SMS
+    if sms_config["account_sid"] and sms_config["auth_token"] and sms_config["from_number"]:
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{sms_config['account_sid']}/Messages.json"
+        payload = {
+            "From": sms_config["from_number"],
+            "To": sms_config["to_number"],
+            "Body": message_body
+        }
+        try:
+            r = requests.post(
+                url,
+                data=payload,
+                auth=(sms_config['account_sid'], sms_config['auth_token']),
+                timeout=10
+            )
+            if r.status_code == 201:
+                print(f"✅ Real SMS alert sent successfully to {sms_config['to_number']}!")
+            else:
+                print(f"❌ Twilio SMS failed: {r.text}")
+        except Exception as e:
+            print(f"❌ Twilio SMS error: {e}")
+    else:
+        # Simulation Mode
+        print(f"📱 [SMS SIMULATION] Sending alert to {sms_config['to_number']}: {message_body}")
+
+
+def process_frame(frame, conf_threshold=0.4):
+    """Process a single frame for fire/smoke detection."""
+    global current_fps, last_alert_time
+    
+    start_time = time.time()
+    
+    # Run detection
+    results = model.predict(frame, conf=conf_threshold, verbose=False)
+    
+    detections = []
+    fire_detected = False
+    smoke_detected = False
+    max_conf = 0.0
+    alert_label = ""
+    
+    for result in results:
+        boxes = result.boxes
+        if boxes is None:
+            continue
+        
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            confidence = float(box.conf[0])
+            class_id = int(box.cls[0])
+            
+            if confidence < conf_threshold:
+                continue
+            
+            label = CLASS_NAMES.get(class_id, f"Class {class_id}")
+            if label == "Fire":
+                fire_detected = True
+            elif label == "Smoke":
+                smoke_detected = True
+                
+            if confidence > max_conf:
+                max_conf = confidence
+                alert_label = label
+                
+            color = CLASS_COLORS.get(class_id, (0, 255, 0))
+            conf_text = f"{label} {confidence:.0%}"
+            
+            # Draw bounding box
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+            
+            # Label background
+            (tw, th), _ = cv2.getTextSize(conf_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+            cv2.rectangle(frame, (x1, y1 - th - 15), (x1 + tw + 10, y1), color, -1)
+            cv2.putText(frame, conf_text, (x1 + 5, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            
+            detections.append({
+                "class": label,
+                "confidence": round(confidence * 100, 1),
+                "bbox": [x1, y1, x2, y2]
+            })
+    
+    # Auto-save frame and send notifications (with cooldown)
+    if (fire_detected or smoke_detected) and (time.time() - last_alert_time > ALERT_COOLDOWN):
+        last_alert_time = time.time()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        alert_filename = f"alert_{timestamp}.jpg"
+        alert_filepath = os.path.join(ALERTS_FOLDER, alert_filename)
+        cv2.imwrite(alert_filepath, frame)
+        print(f"🚨 ALERT: Fire/Smoke detected! Saved frame to {alert_filepath}")
+        
+        # Send SMS alert in background thread
+        threading.Thread(target=send_sms_alert, args=(alert_label, max_conf)).start()
+        
+    # Draw info overlay
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (10, 10), (340, 80), (0, 0, 0), -1)
+    frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
+    
+    end_time = time.time()
+    current_fps = 1 / (end_time - start_time) if (end_time - start_time) > 0 else 0
+    
+    cv2.putText(frame, "FIRE & SMOKE DETECTION", (20, 35),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
+    cv2.putText(frame, f"FPS: {current_fps:.0f} | By NIKHIL MALI", (20, 65),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (150, 150, 150), 1)
+    
+    return frame, detections
+
+
+def generate_frames(source, conf=0.4):
+    """Generator function for video streaming."""
+    global is_detecting, camera
+    
+    if source == "webcam":
+        camera = cv2.VideoCapture(0)
+    elif source == "webcam1":
+        camera = cv2.VideoCapture(1)
+    else:
+        camera = cv2.VideoCapture(source)
+        
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    
+    is_detecting = True
+    
+    while is_detecting:
+        success, frame = camera.read()
+        if not success:
+            if source not in ("webcam", "webcam1"):
+                camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                continue
+            break
+        
+        if model:
+            frame, detections = process_frame(frame, conf)
+            
+            if detections:
+                detection_log.append({
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                    "detections": detections
+                })
+                if len(detection_log) > 100:
+                    detection_log.pop(0)
+        
+        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if not ret:
+            continue
+        
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+    
+    if camera:
+        camera.release()
+
+# ── Flask Routes ──────────────────────────────────────────────
+
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
+
+@app.route('/video_feed')
+def video_feed():
+    source = request.args.get('source', 'webcam')
+    conf = int(request.args.get('conf', 40)) / 100
+    
+    return Response(
+        generate_frames(source, conf),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
+    )
+
+
+@app.route('/stop')
+def stop():
+    global is_detecting, camera
+    is_detecting = False
+    if camera:
+        camera.release()
+        camera = None
+    return jsonify({"status": "stopped"})
+
+
+@app.route('/stats')
+def stats():
+    fire_count = 0
+    smoke_count = 0
+    
+    if detection_log:
+        last_log = detection_log[-1]
+        for d in last_log.get("detections", []):
+            if d["class"] == "Fire":
+                fire_count += 1
+            elif d["class"] == "Smoke":
+                smoke_count += 1
+    
+    return jsonify({
+        "fps": round(current_fps),
+        "total_detections": len(detection_log),
+        "fire_count": fire_count,
+        "smoke_count": smoke_count,
+        "recent_logs": detection_log[-15:]
+    })
+
+
+@app.route('/screenshot')
+def screenshot():
+    if camera and camera.isOpened():
+        ret, frame = camera.read()
+        if ret:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = os.path.join(ALERTS_FOLDER, f"manual_{timestamp}.jpg")
+            cv2.imwrite(path, frame)
+            return jsonify({"success": True, "path": path})
+    return jsonify({"success": False, "error": "No active feed"})
+
+
+@app.route('/api/alerts')
+def get_alerts():
+    """Return list of saved alert filenames."""
+    files = [f for f in os.listdir(ALERTS_FOLDER) if f.endswith('.jpg')]
+    files.sort()
+    return jsonify(files)
+
+
+@app.route('/static/alerts/<path:filename>')
+def serve_alert_image(filename):
+    return send_from_directory(ALERTS_FOLDER, filename)
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"success": False, "error": "No file part"})
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected file"})
+    
+    if file:
+        filename = werkzeug.utils.secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        return jsonify({"success": True, "filename": filename, "filepath": filepath})
+
+
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """Update notification configs from UI."""
+    global sms_config
+    data = request.json
+    
+    if "sms" in data:
+        sms_config.update(data["sms"])
+        
+    return jsonify({"success": True})
+
+
+# ── Main ──────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("🔥 FIREVISION AI — Web Application")
+    print("   Built by NIKHIL MALI")
+    print("=" * 60)
+    
+    load_model("models/best.pt")
+    
+    port = int(os.environ.get("PORT", 5000))
+    print(f"\n🌐 Starting server at: http://localhost:{port}")
+    print("   Press Ctrl+C to stop\n")
+    
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

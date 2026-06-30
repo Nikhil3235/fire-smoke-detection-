@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
+static/uploads/*
+!static/uploads/.gitkeep
+static/alerts/*
+!static/alerts/.gitkeep
+
+# Large weights (if any, though we keep models/best.pt)
+yolov8m.pt
+models/
+static/nikhil-mali.jpg
+

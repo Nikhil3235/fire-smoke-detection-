@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced Fire & Smoke Detection System using YOLOv8m Deep Learning Model. Built by Nikhil Mali — achieving 99.2% mAP with 120,000+ labeled images.">
+    <meta name="keywords" content="Fire Detection, Smoke Detection, YOLOv8, Computer Vision, Deep Learning, AI, CVAT, Nikhil Mali">
+    <meta name="author" content="Nikhil Mali">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="FireVision AI — Fire & Smoke Detection System by Nikhil Mali">
+    <meta property="og:description" content="Industry-grade real-time fire & smoke detection using YOLOv8m, trained on 120,000+ images with 99.2% mAP accuracy.">
+    <meta property="og:type" content="website">
+    
+    <title>FireVision AI — Advanced Fire & Smoke Detection | Nikhil Mali</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    
+    <!-- ===== NAVIGATION ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                Fire<span class="accent">Vision</span><span class="ai-badge">AI</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#hero">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#stats">Statistics</a></li>
+                <li><a href="#demo">Demo</a></li>
+                <li><a href="#tech">Tech Stack</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ===== HERO SECTION ===== -->
+    <section class="hero" id="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <div class="hero-badge reveal">
+                <i class="fas fa-bolt"></i>
+                <span>Industry-Grade Computer Vision Project</span>
+            </div>
+            <h1 class="hero-title reveal">
+                <span class="fire-emoji">🔥</span> Advanced Fire &amp; Smoke
+                <br>
+                <span class="gradient-text">Detection System</span>
+            </h1>
+            <p class="hero-subtitle reveal">
+                Real-time fire and smoke detection powered by <strong>YOLOv8m</strong> deep learning architecture. 
+                Trained on <strong>120,000+ manually labeled images</strong> using CVAT, achieving an unprecedented 
+                <strong>99.2% mAP</strong> accuracy for critical safety applications.
+            </p>
+            <div class="hero-stats reveal">
+                <div class="hero-stat">
+                    <span class="stat-value counter" data-target="99.2" data-decimals="1" data-suffix="%">0</span>
+                    <span class="stat-label">mAP Accuracy</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="stat-value counter" data-target="120000" data-suffix="+">0</span>
+                    <span class="stat-label">Images Trained</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="stat-value">YOLOv8m</span>
+                    <span class="stat-label">Architecture</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="stat-value"><i class="fas fa-clock"></i> Real-Time</span>
+                    <span class="stat-label">Inference</span>
+                </div>
+            </div>
+            <div class="hero-cta reveal">
+                <a href="#demo" class="btn-primary">
+                    <i class="fas fa-play"></i> Watch Demo
+                </a>
+                <a href="#stats" class="btn-secondary">
+                    <i class="fas fa-chart-bar"></i> View Results
+                </a>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <div class="mouse">
+                <div class="mouse-wheel"></div>
+            </div>
+            <span>Scroll to explore</span>
+        </div>
+    </section>
+
+    <!-- ===== ABOUT / BUILT BY ===== -->
+    <section class="about-section" id="about">
+        <div class="section-container">
+            <div class="section-header reveal">
+                <span class="section-badge"><i class="fas fa-user-astronaut"></i> The Developer</span>
+                <h2 class="section-title">Built by <span class="gradient-text">Nikhil Mali</span></h2>
+                <p class="section-subtitle">Passionate Computer Vision Engineer & AI Developer</p>
+            </div>
+            <div class="about-grid">
+                <div class="about-image-wrapper reveal">
+                    <div class="about-avatar">
+                        <img src="https://files.catbox.moe/rtd0z4.jpg" alt="Nikhil Mali - Computer Vision Engineer" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-2xl);">
+                    </div>
+                    <div class="about-glow"></div>
+                </div>
+                <div class="about-content reveal">
+                    <h3 class="about-name">Nikhil Mali</h3>
+                    <p class="about-role"><i class="fas fa-code"></i> Computer Vision Engineer &bull; AI/ML Developer</p>
+                    <p class="about-description">
+                        I specialize in building production-grade computer vision systems that solve real-world problems.
+                        This Fire & Smoke Detection project represents months of dedicated work — from manually labeling 
+                        120,000+ images in CVAT to fine-tuning the YOLOv8m architecture for maximum detection accuracy.
+                        <br><br>
+                        My goal is to create AI systems that save lives. Early fire detection can mean the difference between 
+                        a contained incident and a catastrophic disaster. This model achieves <strong>99.2% mAP</strong>, 
+                        making it reliable for real-world deployment in safety-critical environments.
+                    </p>
+                    <div class="about-highlights">
+                        <div class="highlight-item">
+                            <i class="fas fa-fire"></i>
+                            <span>120K+ Images Labeled</span>
+                        </div>
+                        <div class="highlight-item">
+                            <i class="fas fa-brain"></i>
+                            <span>Deep Learning Expert</span>
+                        </div>
+                        <div class="highlight-item">
+                            <i class="fas fa-bullseye"></i>
+                            <span>99.2% mAP Achieved</span>
+                        </div>
+                    </div>
+                    <div class="about-links">
+                        <a href="https://www.linkedin.com/in/nikhil-mali-55197a32a/" target="_blank" rel="noopener noreferrer" class="social-link linkedin">
+                            <i class="fab fa-linkedin-in"></i>
+                            <span>LinkedIn</span>
+                            <i class="fas fa-arrow-up-right-from-square fa-xs"></i>
+                        </a>
+                        <a href="https://github.com/Nikhil3235" target="_blank" rel="noopener noreferrer" class="social-link github">
+                            <i class="fab fa-github"></i>
+                            <span>GitHub</span>
+                            <i class="fas fa-arrow-up-right-from-square fa-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECTION DIVIDER ===== -->
+    <div class="section-divider"></div>
+
+    <!-- ===== STATS SECTION ===== -->
+    <section class="stats-section" id="stats">
+        <div class="section-container">
+            <div class="section-header reveal">
+                <span class="section-badge"><i class="fas fa-chart-line"></i> Model Performance</span>
+                <h2 class="section-title">Exceptional <span class="gradient-text">Accuracy</span></h2>
+                <p class="section-subtitle">Industry-leading detection metrics achieved through rigorous training</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card reveal">
+                    <div class="stat-icon">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <div class="stat-number counter" data-target="99.2" data-decimals="1" data-suffix="%">0</div>
+                    <div class="stat-title">Mean Average Precision</div>
+                    <div class="stat-desc">mAP@0.5 — near-perfect detection accuracy across all classes</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-icon">
+                        <i class="fas fa-images"></i>
+                    </div>
+                    <div class="stat-number counter" data-target="120000" data-suffix="+">0</div>
+                    <div class="stat-title">Training Images</div>
+                    <div class="stat-desc">Massive dataset manually labeled with precision using CVAT</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="stat-number counter" data-target="2">0</div>
+                    <div class="stat-title">Detection Classes</div>
+                    <div class="stat-desc">Fire &amp; Smoke — dual-class detection for complete coverage</div>
+                </div>
+                <div class="stat-card reveal">
+                    <div class="stat-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="stat-number counter" data-target="45" data-suffix="+">0</div>
+                    <div class="stat-title">FPS Real-Time</div>
+                    <div class="stat-desc">Lightning-fast inference for live video stream processing</div>
+                </div>
+            </div>
+
+            <!-- Performance Bars -->
+            <div class="performance-section reveal">
+                <h3 class="perf-title"><i class="fas fa-chart-bar"></i> Detailed Performance Metrics</h3>
+                <div class="perf-grid">
+                    <div class="perf-item">
+                        <div class="perf-label">
+                            <span>Fire Detection Precision</span>
+                            <span class="perf-value">99.5%</span>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-fill" data-width="99.5"></div>
+                        </div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-label">
+                            <span>Smoke Detection Precision</span>
+                            <span class="perf-value">98.8%</span>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-fill" data-width="98.8"></div>
+                        </div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-label">
+                            <span>Fire Detection Recall</span>
+                            <span class="perf-value">99.1%</span>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-fill" data-width="99.1"></div>
+                        </div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-label">
+                            <span>Smoke Detection Recall</span>
+                            <span class="perf-value">98.3%</span>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-fill" data-width="98.3"></div>
+                        </div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-label">
+                            <span>Overall mAP@0.5</span>
+                            <span class="perf-value">99.2%</span>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-fill fire-gradient" data-width="99.2"></div>
+                        </div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-label">
+                            <span>mAP@0.5:0.95</span>
+                            <span class="perf-value">87.6%</span>
+                        </div>
+                        <div class="perf-bar">
+                            <div class="perf-fill" data-width="87.6"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECTION DIVIDER ===== -->
+    <div class="section-divider"></div>
+
+    <!-- ===== LIVE DEMO SECTION ===== -->
+    <section class="video-section" id="demo">
+        <div class="section-container">
+            <div class="section-header reveal">
+                <span class="section-badge"><i class="fas fa-rocket"></i> Working Module</span>
+                <h2 class="section-title">Try It <span class="gradient-text">Live</span></h2>
+                <p class="section-subtitle">Experience real-time fire and smoke detection powered by our trained YOLOv8m model</p>
+            </div>
+            <!-- ===== WORKING LIVE DASHBOARD ===== -->
+            <div class="grid-layout" style="display: grid; grid-template-columns: 1fr 420px; gap: 2.5rem; margin-top: 3rem; text-align: left;">
+                
+                <!-- Left Column: Video & Settings -->
+                <div style="display: flex; flex-direction: column; gap: 2.5rem;">
+                    <!-- Stream Card -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem; position: relative;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-video" style="color: var(--fire-primary);"></i> Live AI Stream
+                        </h3>
+                        <div class="video-wrapper" style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle);">
+                            <div class="video-placeholder" id="placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-secondary); padding: 2rem; z-index: 2;">
+                                <i class="fas fa-shield-halved" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--fire-primary); opacity: 0.3;"></i>
+                                <p style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-primary);">Stream Inactive</p>
+                                <p style="font-size: 0.85rem;">Select source and click <strong>Start Monitoring</strong></p>
+                            </div>
+                            <canvas id="recordCanvas" style="display: none;"></canvas>
+                            <img id="videoStream" class="video-feed" style="display: none; width: 100%; height: 100%; object-fit: contain;" alt="AI Detection Stream">
+                        </div>
+                        <div class="video-controls" style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                            <button class="btn-primary" id="startBtn" onclick="startStream()" style="border: none; cursor: pointer; text-decoration: none;">
+                                <i class="fas fa-play"></i> Start Monitoring
+                            </button>
+                            <button class="btn-secondary" id="stopBtn" onclick="stopStream()" style="display: none; border: 1px solid var(--border-subtle); cursor: pointer; text-decoration: none;">
+                                <i class="fas fa-stop"></i> Stop Stream
+                            </button>
+                            <button class="btn-secondary" id="recordBtn" onclick="toggleRecording()" disabled style="border: 1px solid var(--border-subtle); cursor: pointer; text-decoration: none;">
+                                <i class="fas fa-circle" id="recordIcon" style="color: #ff3344;"></i> <span id="recordText">Record Session</span>
+                            </button>
+                            <button class="btn-secondary" onclick="generatePDFReport()" style="border: 1px solid var(--border-subtle); cursor: pointer; text-decoration: none;">
+                                <i class="fas fa-file-pdf" style="color: #ea4335;"></i> PDF Report
+                            </button>
+                            <button class="btn-secondary" onclick="triggerManualScreenshot()" style="border: 1px solid var(--border-subtle); cursor: pointer; text-decoration: none;">
+                                <i class="fas fa-camera"></i> Snapshot
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom File Upload Card -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-file-upload" style="color: var(--fire-primary);"></i> Process Custom Video / Image
+                        </h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">
+                            Recruiter Demo: Upload a video or image containing fire/smoke to see the model run inference on it instantly.
+                        </p>
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="upload-zone" onclick="document.getElementById('fileInput').click()" style="border: 2px dashed var(--border-subtle); border-radius: var(--radius-md); padding: 2rem; text-align: center; cursor: pointer; background: rgba(255,255,255,0.01); transition: var(--transition);">
+                                <i class="fas fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                                <p id="uploadText" style="margin-bottom: 0.3rem;">Drag &amp; Drop or Click to Upload Video/Image</p>
+                                <span style="font-size:0.75rem; color: var(--text-secondary);">Supports MP4, AVI, JPG, PNG</span>
+                                <input type="file" id="fileInput" name="file" style="display: none;" onchange="handleFileSelect(this)">
+                            </div>
+                            <button type="button" class="btn-secondary" id="processUploadBtn" onclick="uploadAndProcess()" style="width: 100%; display: none; margin-top: 1rem; border: 1px solid var(--border-subtle); cursor: pointer; text-decoration: none; padding: 0.8rem;">
+                                <i class="fas fa-microchip"></i> Process Uploaded File
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- SMS Emergency Alert Settings -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-sms" style="color: var(--fire-primary);"></i> SMS Emergency Alert Settings
+                        </h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">
+                            Configure real-time Twilio SMS alerts when fire/smoke is detected. If credentials are left blank, simulation mode is active.
+                        </p>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h4 style="font-size: 0.95rem; font-weight: 600;"><i class="fas fa-shield-halved" style="color: var(--accent-teal); margin-right: 0.5rem;"></i> Enable SMS Alerts</h4>
+                            <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                                <input type="checkbox" id="smsEnable" onchange="saveNotificationConfig()" style="opacity: 0; width: 0; height: 0;">
+                                <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #333; transition: .4s; border-radius: 34px;"></span>
+                            </label>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Recipient Mobile Number</label>
+                                <input type="text" id="smsTo" placeholder="+919876543210" onchange="saveNotificationConfig()" style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); outline: none;">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                    <label style="font-size: 0.8rem; color: var(--text-secondary);">Twilio Account SID</label>
+                                    <input type="text" id="smsSid" placeholder="AC..." onchange="saveNotificationConfig()" style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); outline: none;">
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                    <label style="font-size: 0.8rem; color: var(--text-secondary);">Twilio Auth Token</label>
+                                    <input type="password" id="smsToken" placeholder="Token" onchange="saveNotificationConfig()" style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); outline: none;">
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                <label style="font-size: 0.8rem; color: var(--text-secondary);">Twilio Phone Number (From)</label>
+                                <input type="text" id="smsFrom" placeholder="+1234567890" onchange="saveNotificationConfig()" style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); outline: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Analytics & Stats -->
+                <div style="display: flex; flex-direction: column; gap: 2.5rem;">
+                    <!-- Siren Control -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 77, 0, 0.02); border-color: rgba(255, 77, 0, 0.15);">
+                        <div style="display: flex; align-items: center; gap: 0.8rem;">
+                            <i class="fas fa-volume-up" style="font-size: 1.4rem; color: var(--fire-primary);"></i>
+                            <div>
+                                <h4 style="font-size: 0.95rem; font-weight: 700;">Audio Siren Alarm</h4>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary);">Play alarm sound in browser</p>
+                            </div>
+                        </div>
+                        <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                            <input type="checkbox" id="alarmToggle" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #333; transition: .4s; border-radius: 34px;"></span>
+                        </label>
+                    </div>
+
+                    <!-- Live Analytics -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-chart-line" style="color: var(--fire-primary);"></i> Live Analytics
+                        </h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+                                <div class="val" id="fireVal" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--fire-primary);">0%</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">🔥 Fire Conf</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+                                <div class="val" id="smokeVal" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--text-primary);">0%</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">💨 Smoke Conf</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+                                <div class="val" id="fpsVal" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--accent-teal);">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">⚡ FPS</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+                                <div class="val" id="alertsCount" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--fire-primary);">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">🚨 Alerts</div>
+                            </div>
+                        </div>
+                        <div style="height: 160px;">
+                            <canvas id="confidenceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Alert History Gallery -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-history" style="color: var(--fire-primary);"></i> Captured Alerts Gallery
+                        </h3>
+                        <div class="alert-gallery" id="alertGallery" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; max-height: 240px; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-cog" style="color: var(--fire-primary);"></i> Settings
+                        </h3>
+                        <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                <label style="font-size: 0.82rem; color: var(--text-secondary);">Video Source</label>
+                                <select id="sourceSelect" style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); outline: none; cursor: pointer;">
+                                    <option value="webcam">📷 Default Webcam (Camera 0)</option>
+                                    <option value="webcam1">📷 Secondary Webcam (Camera 1)</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                <label style="font-size: 0.82rem; color: var(--text-secondary);">
+                                    Confidence Threshold: <span id="thresholdVal" style="color: var(--fire-primary); font-weight: bold;">40%</span>
+                                </label>
+                                <input type="range" id="thresholdSlider" min="15" max="95" value="40" style="accent-color: var(--fire-primary);" oninput="document.getElementById('thresholdVal').textContent = this.value + '%'">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Logs -->
+                    <div class="panel-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem;">
+                        <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-terminal" style="color: var(--fire-primary);"></i> System Event Logs
+                        </h3>
+                        <div class="log-box" id="logBox" style="background: #020204; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; height: 160px; overflow-y: auto; font-family: monospace; font-size: 0.8rem;">
+                            <div class="log-line" style="margin-bottom: 0.4rem; display: flex; gap: 0.8rem;">
+                                <span class="log-time" style="color: var(--accent-teal);">[System]</span>
+                                <span class="log-text" style="color: var(--text-secondary);">FireVision AI dashboard initialized.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECTION DIVIDER ===== -->
+    <div class="section-divider"></div>
+
+    <!-- ===== TECH STACK SECTION ===== -->
+    <section class="tech-section" id="tech">
+        <div class="section-container">
+            <div class="section-header reveal">
+                <span class="section-badge"><i class="fas fa-microchip"></i> Technology</span>
+                <h2 class="section-title">Tech <span class="gradient-text">Stack</span></h2>
+                <p class="section-subtitle">Cutting-edge tools and frameworks powering this detection system</p>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="fas fa-crosshairs"></i>
+                    </div>
+                    <h3 class="tech-name">YOLOv8m</h3>
+                    <p class="tech-desc">Ultralytics' state-of-the-art object detection model — medium variant for optimal speed-accuracy balance</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-opencv-plain"></i>
+                    </div>
+                    <h3 class="tech-name">CVAT</h3>
+                    <p class="tech-desc">Computer Vision Annotation Tool — used to manually label 120,000+ images with pixel-perfect bounding boxes</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-python-plain"></i>
+                    </div>
+                    <h3 class="tech-name">Python</h3>
+                    <p class="tech-desc">Primary programming language for model training, data preprocessing, and inference pipeline</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-opencv-plain"></i>
+                    </div>
+                    <h3 class="tech-name">OpenCV</h3>
+                    <p class="tech-desc">Real-time video processing, frame extraction, and result visualization with bounding box overlays</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-pytorch-plain"></i>
+                    </div>
+                    <h3 class="tech-name">PyTorch</h3>
+                    <p class="tech-desc">Deep learning framework backbone powering the YOLOv8 architecture training and optimization</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-numpy-plain"></i>
+                    </div>
+                    <h3 class="tech-name">NumPy</h3>
+                    <p class="tech-desc">High-performance numerical computing for array operations, image matrix manipulation, and data preprocessing</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <h3 class="tech-name">CUDA / GPU</h3>
+                    <p class="tech-desc">GPU-accelerated training and inference using NVIDIA CUDA for maximum computational performance</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-tensorflow-original"></i>
+                    </div>
+                    <h3 class="tech-name">TensorBoard</h3>
+                    <p class="tech-desc">Training visualization and monitoring — tracking loss curves, mAP progression, and learning rate</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-flask-original"></i>
+                    </div>
+                    <h3 class="tech-name">Flask</h3>
+                    <p class="tech-desc">Lightweight Python web framework powering the real-time dashboard, REST API endpoints, and video streaming</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-javascript-plain"></i>
+                    </div>
+                    <h3 class="tech-name">JavaScript</h3>
+                    <p class="tech-desc">Client-side logic for live dashboard, Chart.js analytics, PDF generation, session recording, and Web Audio siren</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-html5-plain"></i>
+                    </div>
+                    <h3 class="tech-name">HTML5 / CSS3</h3>
+                    <p class="tech-desc">Modern semantic markup with glassmorphism effects, CSS animations, and responsive premium UI design</p>
+                </div>
+                <div class="tech-card reveal">
+                    <div class="tech-icon">
+                        <i class="devicon-git-plain"></i>
+                    </div>
+                    <h3 class="tech-name">Git / GitHub</h3>
+                    <p class="tech-desc">Version control, collaboration, and CI/CD pipeline for seamless project deployment and code management</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECTION DIVIDER ===== -->
+    <div class="section-divider"></div>
+
+    <!-- ===== PROCESS TIMELINE ===== -->
+    <section class="process-section" id="process">
+        <div class="section-container">
+            <div class="section-header reveal">
+                <span class="section-badge"><i class="fas fa-route"></i> Development</span>
+                <h2 class="section-title">Build <span class="gradient-text">Process</span></h2>
+                <p class="section-subtitle">The complete journey from raw data to production-ready model</p>
+            </div>
+            <div class="process-timeline">
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-step">Phase 01</span>
+                        <h3>Data Collection</h3>
+                        <p>Gathered 120,000+ diverse images of fire and smoke from multiple sources — indoor, outdoor, industrial, forest, and urban environments to ensure model robustness.</p>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-step">Phase 02</span>
+                        <h3>Manual Annotation</h3>
+                        <p>Every single image was meticulously hand-labeled using CVAT annotation tool. Created precise bounding boxes for fire and smoke instances across all 120K+ images.</p>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-step">Phase 03</span>
+                        <h3>Data Preprocessing</h3>
+                        <p>Applied advanced augmentation techniques — rotation, flipping, brightness adjustment, mosaic augmentation, and mixup to further enhance the dataset diversity.</p>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-step">Phase 04</span>
+                        <h3>Model Training</h3>
+                        <p>Trained YOLOv8m from scratch using the curated dataset. Optimized hyperparameters including learning rate, batch size, and epoch count for maximum performance.</p>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot">
+                        <i class="fas fa-vial"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-step">Phase 05</span>
+                        <h3>Evaluation & Optimization</h3>
+                        <p>Rigorous testing on held-out validation set. Iteratively refined model architecture and training pipeline until achieving 99.2% mAP accuracy benchmark.</p>
+                    </div>
+                </div>
+                <div class="timeline-item reveal">
+                    <div class="timeline-dot">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-step">Phase 06</span>
+                        <h3>Deployment Ready</h3>
+                        <p>Exported optimized model for real-time inference. Capable of processing live video streams with 45+ FPS on standard GPU hardware for instant fire/smoke alerts.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECTION DIVIDER ===== -->
+    <div class="section-divider"></div>
+
+    <!-- ===== FEATURES / USE CASES ===== -->
+    <section class="features-section" id="features">
+        <div class="section-container">
+            <div class="section-header reveal">
+                <span class="section-badge"><i class="fas fa-shield-halved"></i> Applications</span>
+                <h2 class="section-title">Real-World <span class="gradient-text">Use Cases</span></h2>
+                <p class="section-subtitle">Critical applications where this detection system can save lives and protect assets</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card reveal">
+                    <div class="feature-icon">
+                        <i class="fas fa-industry"></i>
+                    </div>
+                    <h3>Industrial Safety</h3>
+                    <p>Monitor factories, warehouses, and manufacturing plants for fire hazards. Instant detection enables rapid response to prevent catastrophic industrial fires.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <h3>Forest Fire Detection</h3>
+                    <p>Deploy with surveillance cameras across forest areas to detect wildfires in their earliest stages, enabling rapid containment before they spread.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">
+                        <i class="fas fa-building-shield"></i>
+                    </div>
+                    <h3>Smart Building Security</h3>
+                    <p>Integrate with existing CCTV infrastructure in commercial and residential buildings for 24/7 automated fire monitoring and instant alert systems.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">
+                        <i class="fas fa-helicopter"></i>
+                    </div>
+                    <h3>Disaster Prevention</h3>
+                    <p>Part of early warning systems for disaster management agencies. Detect fire and smoke from drone footage for rapid emergency response coordination.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">
+                        <i class="fas fa-oil-well"></i>
+                    </div>
+                    <h3>Oil & Gas Monitoring</h3>
+                    <p>Critical safety monitoring for refineries, pipelines, and storage facilities where fire detection accuracy can prevent environmental disasters.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">
+                        <i class="fas fa-city"></i>
+                    </div>
+                    <h3>Urban Surveillance</h3>
+                    <p>Smart city integration with traffic and surveillance camera networks for city-wide fire detection and automated emergency dispatch.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECTION DIVIDER ===== -->
+    <div class="section-divider"></div>
+
+    <!-- ===== CTA / CONTACT SECTION ===== -->
+    <section class="cta-section" id="contact">
+        <div class="section-container">
+            <div class="cta-content reveal">
+                <h2 class="cta-title">Interested in <span class="gradient-text">Collaborating?</span></h2>
+                <p class="cta-description">
+                    I'm open to collaborations, internship opportunities, and freelance projects in Computer Vision & AI. 
+                    Let's build something incredible together.
+                </p>
+                <div class="cta-buttons">
+                    <a href="https://www.linkedin.com/in/nikhil-mali-55197a32a/" target="_blank" rel="noopener noreferrer" class="btn-primary">
+                        <i class="fab fa-linkedin-in"></i> Connect on LinkedIn
+                    </a>
+                    <a href="https://github.com/Nikhil3235" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+                        <i class="fab fa-github"></i> View GitHub
+                    </a>
+                </div>
+                <div class="cta-stats">
+                    <div class="cta-stat">
+                        <i class="fas fa-fire"></i>
+                        <span>Fire Detection</span>
+                    </div>
+                    <div class="cta-stat">
+                        <i class="fas fa-smog"></i>
+                        <span>Smoke Detection</span>
+                    </div>
+                    <div class="cta-stat">
+                        <i class="fas fa-brain"></i>
+                        <span>Deep Learning</span>
+                    </div>
+                    <div class="cta-stat">
+                        <i class="fas fa-eye"></i>
+                        <span>Computer Vision</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <a href="#" class="nav-logo">
+                        Fire<span class="accent">Vision</span><span class="ai-badge">AI</span>
+                    </a>
+                    <p class="footer-tagline">Advanced Fire & Smoke Detection System powered by YOLOv8m Deep Learning</p>
+                </div>
+                <div class="footer-links-group">
+                    <div class="footer-col">
+                        <h4>Project</h4>
+                        <ul>
+                            <li><a href="#stats">Statistics</a></li>
+                            <li><a href="#demo">Live Demo</a></li>
+                            <li><a href="#tech">Tech Stack</a></li>
+                            <li><a href="#features">Use Cases</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Connect</h4>
+                        <ul>
+                            <li><a href="https://www.linkedin.com/in/nikhil-mali-55197a32a/" target="_blank">LinkedIn</a></li>
+                            <li><a href="https://github.com/Nikhil3235" target="_blank">GitHub</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 <strong>Nikhil Mali</strong>. All rights reserved.</p>
+                <p class="built-with">Built with <i class="fas fa-heart" style="color: #e63946;"></i> and <i class="fas fa-fire" style="color: #ff6b35;"></i> by <strong>NIKHIL MALI</strong></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

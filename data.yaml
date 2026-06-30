@@ -1,0 +1,19 @@
+# ============================================================
+#  🔥 Fire & Smoke Detection — Dataset Configuration
+#  Built by NIKHIL MALI
+# ============================================================
+
+# Dataset root path (update this to your actual dataset path)
+path: ./dataset
+
+# Train and validation image directories
+train: train/images
+val: val/images
+
+# Number of classes
+nc: 2
+
+# Class names
+names:
+  0: fire
+  1: smoke
