@@ -1,3 +1,13 @@
+---
+title: FireVision AI
+emoji: 🔥
+colorFrom: red
+colorTo: orange
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🔥 FireVision AI — Intelligent Fire & Smoke Detection System
 Developed by **NIKHIL MALI** (Computer Vision & AI Engineer)
 
