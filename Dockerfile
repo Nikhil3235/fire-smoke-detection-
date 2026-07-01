@@ -1,5 +1,5 @@
-# Use official Python 3.10 slim image
-FROM python:3.10-slim
+# Use official Python 3.10 slim image based on Debian Bookworm
+FROM python:3.10-slim-bookworm
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
