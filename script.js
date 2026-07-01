@@ -744,17 +744,24 @@ document.addEventListener('DOMContentLoaded', () => {
                   video: { width: 640, height: 360, facingMode: "user" } 
               });
               const video = document.createElement('video');
+              video.id = 'hiddenWebcamVideo';
               video.srcObject = webcamStream;
               video.autoplay = true;
               video.playsInline = true;
+              video.muted = true;
+              video.style.position = 'absolute';
+              video.style.width = '0';
+              video.style.height = '0';
+              video.style.opacity = '0';
+              video.style.pointerEvents = 'none';
+              document.body.appendChild(video);
               window.activeVideoElement = video;
               
-              await new Promise((resolve) => {
-                  video.onloadedmetadata = () => {
-                      video.play();
-                      resolve();
-                  };
-              });
+              try {
+                  await video.play();
+              } catch (e) {
+                  console.warn("video.play() failed initially, retrying...", e);
+              }
               
               const fps = 12;
               const interval = 1000 / fps;
@@ -866,6 +873,12 @@ document.addEventListener('DOMContentLoaded', () => {
           if (webcamStream) {
               webcamStream.getTracks().forEach(track => track.stop());
               webcamStream = null;
+          }
+          const hiddenVideo = document.getElementById('hiddenWebcamVideo');
+          if (hiddenVideo) {
+              hiddenVideo.pause();
+              hiddenVideo.srcObject = null;
+              hiddenVideo.remove();
           }
           if (webcamFrameId) {
               cancelAnimationFrame(webcamFrameId);
