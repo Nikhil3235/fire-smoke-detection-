@@ -665,8 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
       stopBtn.style.display = 'inline-flex';
       document.getElementById('recordBtn').disabled = false;
       
-      statusDot.className = 'status-dot active';
-      statusText.textContent = 'Monitoring Active';
+      if (statusDot) statusDot.className = 'status-dot active';
+      if (statusText) statusText.textContent = 'Monitoring Active';
       window.addLog(`Started monitoring source: ${source} (Threshold: ${conf}%)`);
 
       if (source === 'webcam') {
@@ -730,8 +730,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                   const smokeConfPct = data.smoke_conf * 100;
                                   
                                   if (fireConfPct > 0 || smokeConfPct > 0) {
-                                      statusDot.className = 'status-dot alert';
-                                      statusText.textContent = '⚠ CRITICAL ALERT';
+                                      if (statusDot) statusDot.className = 'status-dot alert';
+                                      if (statusText) statusText.textContent = '⚠ CRITICAL ALERT';
                                       window.playSiren();
                                       
                                       if (!window.lastAlertLogTime || Date.now() - window.lastAlertLogTime > 5000) {
@@ -739,8 +739,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                           window.addLog(`⚠ CRITICAL: Detected ${fireConfPct > 0 ? 'Fire (' + fireConfPct.toFixed(0) + '%)' : ''} ${smokeConfPct > 0 ? 'Smoke (' + smokeConfPct.toFixed(0) + '%)' : ''}`, true);
                                       }
                                   } else {
-                                      statusDot.className = 'status-dot active';
-                                      statusText.textContent = 'Monitoring Active';
+                                      if (statusDot) statusDot.className = 'status-dot active';
+                                      if (statusText) statusText.textContent = 'Monitoring Active';
                                       window.stopSiren();
                                   }
                                   
@@ -793,8 +793,8 @@ document.addEventListener('DOMContentLoaded', () => {
           startBtn.style.display = 'inline-flex';
           stopBtn.style.display = 'none';
           
-          statusDot.className = 'status-dot';
-          statusText.textContent = 'System Ready';
+          if (statusDot) statusDot.className = 'status-dot';
+          if (statusText) statusText.textContent = 'System Ready';
           detecting = false;
           
           if (webcamStream) {
@@ -845,13 +845,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const statusText = document.getElementById('statusText');
           
           if (fireConf > 0 || smokeConf > 0) {
-              statusDot.className = 'status-dot alert';
-              statusText.textContent = '⚠ CRITICAL ALERT';
+              if (statusDot) statusDot.className = 'status-dot alert';
+              if (statusText) statusText.textContent = '⚠ CRITICAL ALERT';
               window.playSiren();
               window.addLog(`⚠ CRITICAL: Detected ${fireConf > 0 ? 'Fire (' + fireConf + '%)' : ''} ${smokeConf > 0 ? 'Smoke (' + smokeConf + '%)' : ''}`, true);
           } else {
-              statusDot.className = 'status-dot active';
-              statusText.textContent = 'Monitoring Active';
+              if (statusDot) statusDot.className = 'status-dot active';
+              if (statusText) statusText.textContent = 'Monitoring Active';
               window.stopSiren();
           }
           
