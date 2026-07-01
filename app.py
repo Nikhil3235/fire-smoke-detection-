@@ -64,9 +64,9 @@ def load_model(model_path="models/best.pt"):
     """Load YOLOv8 model, downloading it if not present."""
     global model
     if not os.path.exists(model_path):
-        print("📥 Model weights not found. Downloading from Hugging Face...")
+        print("📥 Model weights not found. Downloading model...")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        url = "https://huggingface.co/SHOU-ISD/fire-and-smoke/resolve/main/best.pt"
+        url = "https://files.catbox.moe/p418cz.pt"
         try:
             import urllib.request
             urllib.request.urlretrieve(url, model_path)
