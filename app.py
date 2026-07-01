@@ -284,14 +284,23 @@ def stop():
 @app.route('/api/debug')
 def debug_status():
     import os
-    files = ["models/best.pt", "static/sample-fire.mp4", "static/sample-smoke.mp4"]
     res = {}
+    
+    # Check specific paths
+    files = ["models/best.pt", "static/sample-fire.mp4", "static/sample-smoke.mp4"]
+    res["checks"] = {}
     for f in files:
         exist = os.path.exists(f)
-        res[f] = {
+        res["checks"][f] = {
             "exists": exist,
             "size": os.path.getsize(f) if exist else 0
         }
+        
+    # List files in key directories
+    res["root_files"] = os.listdir(".") if os.path.exists(".") else []
+    res["models_files"] = os.listdir("models") if os.path.exists("models") else []
+    res["static_files"] = os.listdir("static") if os.path.exists("static") else []
+    
     return jsonify(res)
 
 
