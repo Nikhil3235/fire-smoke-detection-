@@ -932,12 +932,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                           
                                           let boxColor = '#8a90a0'; // Default gray
                                           let shadowColor = 'rgba(138, 144, 160, 0.3)';
+                                          let textColor = '#ffffff';
+                                          
                                           if (d.class === 'Fire') {
                                               boxColor = '#ff4d00';
                                               shadowColor = 'rgba(255, 77, 0, 0.4)';
                                           } else if (d.class.includes('Living Person')) {
                                               boxColor = '#00ff6a';
                                               shadowColor = 'rgba(0, 255, 106, 0.4)';
+                                              textColor = '#000000';
+                                          } else if (d.class.includes('Fake')) {
+                                              boxColor = '#ffcc00'; // Yellow for spoofed fire
+                                              shadowColor = 'rgba(255, 204, 0, 0.4)';
+                                              textColor = '#000000';
                                           }
                                           
                                           canvasCtx.strokeStyle = boxColor;
@@ -959,10 +966,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                           const textWidth = canvasCtx.measureText(labelText).width;
                                           
                                           canvasCtx.fillRect(x1 - 1, y1 - 20, textWidth + 12, 20);
-                                          canvasCtx.fillStyle = '#ffffff';
-                                          if (boxColor === '#00ff6a') {
-                                              canvasCtx.fillStyle = '#000000'; // Dark text for green background
-                                          }
+                                          canvasCtx.fillStyle = textColor;
                                           canvasCtx.fillText(labelText, x1 + 5, y1 - 6);
                                       });
                                   }

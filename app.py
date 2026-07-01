@@ -134,6 +134,38 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     max_conf = 0.0
     alert_label = ""
     
+    # Process Screens and People first
+    screen_boxes = []
+    if person_results:
+        person_count = 1
+        for result in person_results:
+            boxes = result.boxes
+            if boxes is None:
+                continue
+            for box in boxes:
+                class_id = int(box.cls[0])
+                confidence = float(box.conf[0])
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                
+                # Screen classes in COCO: 62 (tv), 63 (laptop), 67 (cell phone)
+                if class_id in [62, 63, 67]:
+                    if confidence > 0.3:  # Low threshold for screens to be safe against spoofing
+                        screen_boxes.append((x1, y1, x2, y2))
+                        
+                elif class_id == 0:  # Person
+                    # Heuristic for Living vs Doll
+                    if confidence > 0.45:
+                        label = f"Living Person {person_count}"
+                        person_count += 1
+                    else:
+                        label = "Doll"
+                        
+                    detections.append({
+                        "class": label,
+                        "confidence": round(confidence * 100, 1),
+                        "bbox": [x1, y1, x2, y2]
+                    })
+    
     # Process Fire/Smoke
     for result in results:
         boxes = result.boxes
@@ -149,11 +181,32 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                 continue
             
             label = CLASS_NAMES.get(class_id, f"Class {class_id}")
-            if label == "Fire":
-                fire_detected = True
-            elif label == "Smoke":
-                smoke_detected = True
+            
+            # Anti-Spoofing Heuristic: Check if fire is ON a screen
+            is_spoof = False
+            fire_area = (x2 - x1) * (y2 - y1)
+            for (sx1, sy1, sx2, sy2) in screen_boxes:
+                # Calculate Intersection
+                ix1 = max(x1, sx1)
+                iy1 = max(y1, sy1)
+                ix2 = min(x2, sx2)
+                iy2 = min(y2, sy2)
                 
+                if ix1 < ix2 and iy1 < iy2:
+                    intersection_area = (ix2 - ix1) * (iy2 - iy1)
+                    # If more than 50% of the fire is inside a screen, it's a video/photo!
+                    if fire_area > 0 and (intersection_area / fire_area) > 0.5:
+                        is_spoof = True
+                        break
+            
+            if is_spoof:
+                label = f"Fake {label} (Screen)"
+            else:
+                if label == "Fire":
+                    fire_detected = True
+                elif label == "Smoke":
+                    smoke_detected = True
+                    
             if confidence > max_conf:
                 max_conf = confidence
                 alert_label = label
@@ -163,32 +216,6 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                 "confidence": round(confidence * 100, 1),
                 "bbox": [x1, y1, x2, y2]
             })
-
-    # Process People
-    if person_results:
-        person_count = 1
-        for result in person_results:
-            boxes = result.boxes
-            if boxes is None:
-                continue
-            for box in boxes:
-                class_id = int(box.cls[0])
-                if class_id == 0:  # COCO class 0 is person
-                    confidence = float(box.conf[0])
-                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                    
-                    # Heuristic for Living vs Doll
-                    if confidence > 0.45:
-                        label = f"Living Person {person_count}"
-                        person_count += 1
-                    else:
-                        label = "Doll"
-                        
-                    detections.append({
-                        "class": label,
-                        "confidence": round(confidence * 100, 1),
-                        "bbox": [x1, y1, x2, y2]
-                    })
     
     # Auto-save frame and send notifications (with cooldown)
     current_time = time.time()
