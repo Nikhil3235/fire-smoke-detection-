@@ -671,6 +671,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (source === 'webcam') {
           try {
+              if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                  throw new Error("Camera API is blocked on this page context by your browser. Please make sure camera permission is allowed in your site settings.");
+              }
               webcamStream = await navigator.mediaDevices.getUserMedia({ 
                   video: { width: 640, height: 360, facingMode: "user" } 
               });
@@ -765,7 +768,8 @@ document.addEventListener('DOMContentLoaded', () => {
               webcamFrameId = requestAnimationFrame(captureLoop);
           } catch (err) {
               console.error("Webcam access error:", err);
-              window.addLog("❌ Error: Could not access local camera. Ensure permissions are granted.", true);
+              window.addLog(`❌ Error: ${err.message}`, true);
+              alert(`📷 Webcam Error:\nType: ${err.name}\nMessage: ${err.message}\n\nIf the browser blocked it, please click the lock/settings icon next to the URL bar and select "Allow" for Camera.`);
               window.stopStream();
           }
       } else {
