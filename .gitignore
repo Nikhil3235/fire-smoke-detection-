@@ -26,4 +26,6 @@ static/alerts/*
 yolov8m.pt
 models/
 static/nikhil-mali.jpg
+static/sample-fire.mp4
+static/sample-smoke.mp4
 

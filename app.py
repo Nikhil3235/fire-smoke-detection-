@@ -205,13 +205,22 @@ def generate_frames(source, conf=0.4):
     
     if source == "webcam":
         camera = cv2.VideoCapture(0)
+        if not camera or not camera.isOpened():
+            print("⚠️ No webcam detected. Falling back to local sample fire video.")
+            if camera:
+                camera.release()
+            source = "static/sample-fire.mp4"
+            camera = cv2.VideoCapture(source)
     elif source == "webcam1":
         camera = cv2.VideoCapture(1)
+        if not camera or not camera.isOpened():
+            print("⚠️ No secondary webcam detected. Falling back to local sample smoke video.")
+            if camera:
+                camera.release()
+            source = "static/sample-smoke.mp4"
+            camera = cv2.VideoCapture(source)
     else:
         camera = cv2.VideoCapture(source)
-        
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     
     is_detecting = True
     
@@ -347,6 +356,23 @@ def update_config():
     return jsonify({"success": True})
 
 
+def download_sample_videos():
+    """Download sample fire and smoke videos if not present."""
+    samples = {
+        "static/sample-fire.mp4": "https://files.catbox.moe/vz9ix2.mp4",
+        "static/sample-smoke.mp4": "https://files.catbox.moe/kzn8sg.mp4"
+    }
+    for filepath, url in samples.items():
+        if not os.path.exists(filepath):
+            print(f"📥 Downloading sample video: {filepath}...")
+            try:
+                import urllib.request
+                urllib.request.urlretrieve(url, filepath)
+                print(f"✅ {filepath} downloaded successfully!")
+            except Exception as e:
+                print(f"❌ Failed to download {filepath}: {e}")
+
+
 # ── Main ──────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -355,6 +381,7 @@ if __name__ == "__main__":
     print("   Built by NIKHIL MALI")
     print("=" * 60)
     
+    download_sample_videos()
     load_model("models/best.pt")
     
     port = int(os.environ.get("PORT", 5000))
