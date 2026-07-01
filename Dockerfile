@@ -31,8 +31,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY --chown=user:user . /app/
 
 # Create necessary directories and set permissions
-RUN mkdir -p /app/static/uploads /app/static/alerts && \
-    chown -R user:user /app/static
+RUN mkdir -p /app/static/uploads /app/static/alerts /app/models && \
+    chown -R user:user /app
 
 # Switch to the non-root user
 USER user
