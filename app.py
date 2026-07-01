@@ -121,12 +121,12 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     start_time = time.time()
     
     # Run detection on Fire/Smoke Model
-    results = model.predict(frame, conf=conf_threshold, verbose=False)
+    results = model.predict(frame, conf=conf_threshold, imgsz=320, verbose=False)
     
     # Run detection on Person Model (if loaded)
     person_results = None
     if model_person:
-        person_results = model_person.predict(frame, conf=0.4, verbose=False)
+        person_results = model_person.predict(frame, conf=0.45, imgsz=320, verbose=False)
     
     detections = []
     fire_detected = False
@@ -154,7 +154,7 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                         
                 elif class_id == 0:  # Person
                     # Heuristic for Living vs Doll
-                    if confidence > 0.45:
+                    if confidence > 0.6:
                         label = f"Living Person {person_count}"
                         person_count += 1
                     else:
