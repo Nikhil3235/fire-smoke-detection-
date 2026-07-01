@@ -178,7 +178,7 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                     x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                     
                     # Heuristic for Living vs Doll
-                    if confidence > 0.65:
+                    if confidence > 0.45:
                         label = f"Living Person {person_count}"
                         person_count += 1
                     else:

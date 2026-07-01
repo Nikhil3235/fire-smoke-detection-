@@ -951,7 +951,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                           // Label tag
                                           canvasCtx.fillStyle = boxColor;
                                           canvasCtx.shadowBlur = 0; // reset shadow for text
-                                          const labelText = `${d.class} ${d.confidence.toFixed(0)}%`;
+                                          let labelText = `${d.class} ${d.confidence.toFixed(0)}%`;
+                                          if (d.class.includes('Person') || d.class === 'Doll') {
+                                              labelText = d.class.replace('Living ', ''); // "Person 1" instead of "Living Person 1 85%"
+                                          }
                                           canvasCtx.font = 'bold 12px Outfit, sans-serif';
                                           const textWidth = canvasCtx.measureText(labelText).width;
                                           
@@ -965,13 +968,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                   }
                                   
                                   document.getElementById('fpsVal').textContent = data.fps;
-                                  document.getElementById('fireVal').textContent = (data.fire_conf * 100).toFixed(0) + '%';
-                                  document.getElementById('smokeVal').textContent = (data.smoke_conf * 100).toFixed(0) + '%';
+                                  document.getElementById('fireVal').textContent = (data.fire_conf).toFixed(0) + '%';
+                                  document.getElementById('smokeVal').textContent = (data.smoke_conf).toFixed(0) + '%';
                                   const peopleValEl = document.getElementById('peopleVal');
                                   if (peopleValEl) peopleValEl.textContent = data.people_count || 0;
                                   
-                                  const fireConfPct = data.fire_conf * 100;
-                                  const smokeConfPct = data.smoke_conf * 100;
+                                  const fireConfPct = data.fire_conf;
+                                  const smokeConfPct = data.smoke_conf;
                                   
                                   if (fireConfPct > 0 || smokeConfPct > 0) {
                                       if (statusDot) statusDot.className = 'status-dot alert';
