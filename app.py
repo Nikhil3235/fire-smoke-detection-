@@ -48,7 +48,7 @@ active_source = "webcam"
 sms_config = {"enabled": False, "account_sid": "", "auth_token": "", "from_number": "", "to_number": ""}
 
 # Alert cooldown (prevent spamming notifications)
-last_alert_time = 0
+last_alert_time = {} # dictionary keyed by session_id
 ALERT_COOLDOWN = 10.0  # 10 seconds between notifications
 
 # ── Detection Colors (BGR) ───────────────────────────────────
@@ -60,41 +60,34 @@ CLASS_COLORS = {
 CLASS_NAMES = {0: "Fire", 1: "Smoke"}
 
 
-def load_model(model_path="models/best.pt"):
-    """Load YOLOv8 model, downloading it if not present."""
+def load_model(weights_path="models/best.pt"):
+    """Load the YOLOv8 model."""
     global model
-    if not os.path.exists(model_path):
-        print("📥 Model weights not found. Downloading model...")
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        url = "https://files.catbox.moe/p418cz.pt"
-        try:
-            import urllib.request
-            urllib.request.urlretrieve(url, model_path)
-            print("✅ Model downloaded successfully!")
-        except Exception as e:
-            print(f"❌ Failed to download model: {e}")
+    try:
+        from ultralytics import YOLO
+        if not os.path.exists(weights_path):
+            print(f"⚠️ Model file '{weights_path}' not found!")
             return False
-            
-    if os.path.exists(model_path):
-        model = YOLO(model_path)
-        print(f"✅ Model loaded: {model_path}")
+        model = YOLO(weights_path)
+        print("✅ YOLOv8 Custom Fire/Smoke Model Loaded Successfully!")
         return True
-    return False
+    except Exception as e:
+        print(f"❌ Error loading model: {e}")
+        return False
 
 
-def send_sms_alert(label, conf):
-    """Send SMS alert via Twilio."""
-    if not sms_config["enabled"] or not sms_config["to_number"]:
+def send_sms_alert(alert_type, confidence):
+    """Send SMS via Twilio if enabled."""
+    if not sms_config.get("enabled"):
         return
+        
+    message_body = f"🚨 FIREVISION AI ALERT 🚨\n{alert_type} detected with {confidence:.0%} confidence! Please check the dashboard immediately."
     
-    message_body = f"🚨 FireVision AI Alert! {label.upper()} detected with {conf:.0%} confidence at {datetime.now().strftime('%H:%M:%S')}. System monitored by Nikhil Mali."
-    
-    # If Twilio credentials are provided, send actual SMS
-    if sms_config["account_sid"] and sms_config["auth_token"] and sms_config["from_number"]:
+    if sms_config.get('account_sid') and sms_config.get('auth_token'):
         url = f"https://api.twilio.com/2010-04-01/Accounts/{sms_config['account_sid']}/Messages.json"
         payload = {
-            "From": sms_config["from_number"],
-            "To": sms_config["to_number"],
+            "To": sms_config['to_number'],
+            "From": sms_config['from_number'],
             "Body": message_body
         }
         try:
@@ -115,7 +108,7 @@ def send_sms_alert(label, conf):
         print(f"📱 [SMS SIMULATION] Sending alert to {sms_config['to_number']}: {message_body}")
 
 
-def process_frame(frame, conf_threshold=0.4):
+def process_frame(frame, conf_threshold=0.4, session_id="default"):
     """Process a single frame for fire/smoke detection."""
     global current_fps, last_alert_time
     
@@ -172,13 +165,20 @@ def process_frame(frame, conf_threshold=0.4):
             })
     
     # Auto-save frame and send notifications (with cooldown)
-    if (fire_detected or smoke_detected) and (time.time() - last_alert_time > ALERT_COOLDOWN):
-        last_alert_time = time.time()
+    current_time = time.time()
+    session_last_alert = last_alert_time.get(session_id, 0)
+    
+    if (fire_detected or smoke_detected) and (current_time - session_last_alert > ALERT_COOLDOWN):
+        last_alert_time[session_id] = current_time
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         alert_filename = f"alert_{timestamp}.jpg"
-        alert_filepath = os.path.join(ALERTS_FOLDER, alert_filename)
+        
+        session_alert_folder = os.path.join(ALERTS_FOLDER, session_id)
+        os.makedirs(session_alert_folder, exist_ok=True)
+        
+        alert_filepath = os.path.join(session_alert_folder, alert_filename)
         cv2.imwrite(alert_filepath, frame)
-        print(f"🚨 ALERT: Fire/Smoke detected! Saved frame to {alert_filepath}")
+        print(f"🚨 ALERT [{session_id}]: Fire/Smoke detected! Saved frame to {alert_filepath}")
         
         # Send SMS alert in background thread
         threading.Thread(target=send_sms_alert, args=(alert_label, max_conf)).start()
@@ -287,6 +287,7 @@ def api_process_frame():
     data = request.json
     img_b64 = data.get("image")
     conf = float(data.get("conf", 0.4))
+    session_id = data.get("session_id", "default")
     
     if not img_b64:
         return jsonify({"success": False, "error": "No image data"}), 400
@@ -308,7 +309,7 @@ def api_process_frame():
             
         # Process the frame
         if model:
-            frame, detections = process_frame(frame, conf)
+            frame, detections = process_frame(frame, conf, session_id)
             if detections:
                 detection_log.append({
                     "time": datetime.now().strftime("%H:%M:%S"),
@@ -396,11 +397,14 @@ def stats():
 
 @app.route('/screenshot')
 def screenshot():
+    session_id = request.args.get("session_id", "default")
     if camera and camera.isOpened():
         ret, frame = camera.read()
         if ret:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            path = os.path.join(ALERTS_FOLDER, f"manual_{timestamp}.jpg")
+            session_alert_folder = os.path.join(ALERTS_FOLDER, session_id)
+            os.makedirs(session_alert_folder, exist_ok=True)
+            path = os.path.join(session_alert_folder, f"manual_{timestamp}.jpg")
             cv2.imwrite(path, frame)
             return jsonify({"success": True, "path": path})
     return jsonify({"success": False, "error": "No active feed"})
@@ -409,14 +413,19 @@ def screenshot():
 @app.route('/api/alerts')
 def get_alerts():
     """Return list of saved alert filenames."""
-    files = [f for f in os.listdir(ALERTS_FOLDER) if f.endswith('.jpg')]
+    session_id = request.args.get("session_id", "default")
+    session_alert_folder = os.path.join(ALERTS_FOLDER, session_id)
+    if not os.path.exists(session_alert_folder):
+        return jsonify([])
+    files = [f for f in os.listdir(session_alert_folder) if f.endswith('.jpg')]
     files.sort()
     return jsonify(files)
 
 
-@app.route('/static/alerts/<path:filename>')
-def serve_alert_image(filename):
-    return send_from_directory(ALERTS_FOLDER, filename)
+@app.route('/static/alerts/<session_id>/<path:filename>')
+def serve_alert_image(session_id, filename):
+    session_alert_folder = os.path.join(ALERTS_FOLDER, session_id)
+    return send_from_directory(session_alert_folder, filename)
 
 
 @app.route('/upload', methods=['POST'])
@@ -427,10 +436,14 @@ def upload_file():
     file = request.files['file']
     if file.filename == '':
         return jsonify({"success": False, "error": "No selected file"})
+        
+    session_id = request.form.get("session_id", "default")
     
     if file:
         filename = werkzeug.utils.secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        session_upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], session_id)
+        os.makedirs(session_upload_folder, exist_ok=True)
+        filepath = os.path.join(session_upload_folder, filename)
         file.save(filepath)
         return jsonify({"success": True, "filename": filename, "filepath": filepath})
 

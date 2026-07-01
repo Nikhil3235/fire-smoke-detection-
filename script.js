@@ -653,6 +653,11 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ──────────────────────────────────────────────
    *  16.  LIVE AI DASHBOARD LOGIC
    * ────────────────────────────────────────────── */
+  if (!localStorage.getItem('fire_session_id')) {
+      localStorage.setItem('fire_session_id', 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36));
+  }
+  window.sessionId = localStorage.getItem('fire_session_id');
+
   let detecting = false;
   let statsInterval = null;
   let audioCtx = null;
@@ -856,10 +861,10 @@ document.addEventListener('DOMContentLoaded', () => {
               detectionCanvas.height = 360;
               const canvasCtx = detectionCanvas.getContext('2d');
               
-              const fps = 12; // Process 12 times per second for lightning fast detection
+              const fps = 20; // 20 FPS for ultra-low latency (<0.1s capture time)
               const interval = 1000 / fps;
               let lastTime = 0;
-              let isProcessingFrame = false;
+              let concurrentRequests = 0; // Allow up to 3 requests in flight to defeat network latency
               
               const captureLoop = (timestamp) => {
                   if (!detecting) return;
@@ -867,8 +872,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   if (timestamp - lastTime >= interval) {
                       lastTime = timestamp;
                       
-                      if (webcamVideo.videoWidth > 0 && webcamVideo.videoHeight > 0 && !isProcessingFrame) {
-                          isProcessingFrame = true;
+                      if (webcamVideo.videoWidth > 0 && webcamVideo.videoHeight > 0 && concurrentRequests < 3) {
+                          concurrentRequests++;
                           
                           // Use full 640x360 resolution so we don't miss small fires
                           hiddenCanvas.width = 640;
@@ -881,11 +886,11 @@ document.addEventListener('DOMContentLoaded', () => {
                           fetch('/api/process_frame', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ image: dataUrl, conf: threshold, return_image: false })
+                              body: JSON.stringify({ image: dataUrl, conf: threshold, return_image: false, session_id: window.sessionId })
                           })
                           .then(r => r.json())
                           .then(data => {
-                              isProcessingFrame = false;
+                              concurrentRequests--;
                               if (data.success && detecting) {
                                   // Clear detection canvas
                                   canvasCtx.clearRect(0, 0, 640, 360);
@@ -1112,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.loadAlertGallery = () => {
-      fetch('/api/alerts').then(r => r.json()).then(data => {
+      fetch(`/api/alerts?session_id=${window.sessionId}`).then(r => r.json()).then(data => {
           const countEl = document.getElementById('alertsCount');
           if (countEl) countEl.textContent = data.length;
           const gallery = document.getElementById('alertGallery');
@@ -1127,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const formattedTime = timeStr.slice(0,2) + ':' + timeStr.slice(2,4) + ':' + timeStr.slice(4,6);
               return `
                   <div class="alert-thumb" style="position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-subtle); aspect-ratio: 16/10;">
-                      <img src="/static/alerts/${filename}" alt="Alert capture" style="width: 100%; height: 100%; object-fit: cover;">
+                      <img src="/static/alerts/${window.sessionId}/${filename}" alt="Alert capture" style="width: 100%; height: 100%; object-fit: cover;">
                       <div class="time-tag" style="position: absolute; bottom: 0; inset-x: 0; background: rgba(0,0,0,0.7); font-size: 0.7rem; padding: 4px; text-align: center; color: var(--text-primary);"><i class="fas fa-clock"></i> ${formattedTime}</div>
                   </div>
               `;
@@ -1283,6 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.uploadAndProcess = () => {
       const formData = new FormData(document.getElementById('uploadForm'));
+      formData.append("session_id", window.sessionId);
       window.addLog("Uploading file to server...");
       
       fetch('/upload', {
@@ -1316,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.triggerManualScreenshot = () => {
-      fetch('/screenshot').then(r => r.json()).then(data => {
+      fetch(`/screenshot?session_id=${window.sessionId}`).then(r => r.json()).then(data => {
           if (data.success) {
               window.addLog("Manual snapshot captured & saved.");
               window.loadAlertGallery();
