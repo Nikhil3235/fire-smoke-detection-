@@ -387,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only on non-touch devices
     if ('ontouchstart' in window) return;
 
+    // 1. Soft Background Radial Glow
     const glow = document.createElement('div');
     glow.classList.add('cursor-glow');
     Object.assign(glow.style, {
@@ -404,30 +405,101 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.body.appendChild(glow);
 
+    // 2. Flame Particle Canvas Overlay
+    const canvas = document.createElement('canvas');
+    canvas.id = 'flameCursorCanvas';
+    Object.assign(canvas.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: '100vw',
+      height: '100vh',
+      pointerEvents: 'none',
+      zIndex: '999999'
+    });
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }, { passive: true });
+
+    const particles = [];
     let cursorX = 0;
     let cursorY = 0;
     let glowX   = 0;
     let glowY   = 0;
+    let lastMouseTime = 0;
 
     document.addEventListener('mousemove', (e) => {
       cursorX = e.clientX;
       cursorY = e.clientY;
       glow.style.opacity = '1';
+
+      // Limit particle generation rate slightly for performance
+      const now = performance.now();
+      if (now - lastMouseTime > 15) {
+        lastMouseTime = now;
+        // Spawn 2-3 flame particles per mouse move
+        for (let i = 0; i < 2; i++) {
+          particles.push({
+            x: cursorX + (Math.random() - 0.5) * 6,
+            y: cursorY + (Math.random() - 0.5) * 6,
+            vx: (Math.random() - 0.5) * 1.0,
+            vy: -Math.random() * 1.8 - 0.6, // Float upwards
+            alpha: 1.0,
+            decay: Math.random() * 0.025 + 0.015,
+            size: Math.random() * 6 + 3,
+            color: Math.random() > 0.45 ? 'rgba(255, 78, 0, ' : 'rgba(255, 165, 0, ' // Fire theme orange/yellow
+          });
+        }
+      }
     }, { passive: true });
 
     document.addEventListener('mouseleave', () => {
       glow.style.opacity = '0';
     });
 
-    // Smooth follow via rAF for buttery 60fps movement
-    const updateGlow = () => {
+    // Animate loop for glow positioning and flame particles drawing
+    const updateCursorGlow = () => {
+      // 1. Update radial glow position smoothly
       glowX += (cursorX - glowX) * 0.12;
       glowY += (cursorY - glowY) * 0.12;
       glow.style.left = `${glowX}px`;
       glow.style.top  = `${glowY}px`;
-      requestAnimationFrame(updateGlow);
+
+      // 2. Draw flame particles
+      ctx.clearRect(0, 0, width, height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+        p.size *= 0.96; // Shrink particle
+
+        if (p.alpha <= 0 || p.size < 0.5) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        // Beautiful glowing flame drawing
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + p.alpha * 0.75 + ')'; // semi-transparent glow, not too dark
+        ctx.shadowColor = p.color + '0.4)';
+        ctx.shadowBlur = p.size * 1.5;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      requestAnimationFrame(updateCursorGlow);
     };
-    requestAnimationFrame(updateGlow);
+    requestAnimationFrame(updateCursorGlow);
   };
 
 
