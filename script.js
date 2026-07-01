@@ -493,6 +493,71 @@ document.addEventListener('DOMContentLoaded', () => {
     observer.observe(perfSection);
   };
 
+  const checkCameraAvailability = async () => {
+    const statusEl = document.createElement('div');
+    statusEl.id = 'cameraStatusBanner';
+    statusEl.style.fontSize = '0.75rem';
+    statusEl.style.marginTop = '0.5rem';
+    statusEl.style.fontWeight = '600';
+    statusEl.style.display = 'inline-block';
+    statusEl.style.padding = '4px 10px';
+    statusEl.style.borderRadius = '6px';
+    statusEl.style.transition = 'all 0.3s ease';
+
+    const sourceSelect = document.getElementById('sourceSelect');
+    if (!sourceSelect) return;
+    const selectContainer = sourceSelect.parentNode;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusEl.textContent = '📷 Camera: ❌ Blocked/Unsupported (Use Chrome/Firefox over HTTPS)';
+        statusEl.style.background = 'rgba(239, 68, 68, 0.15)';
+        statusEl.style.color = '#ef4444';
+        statusEl.style.border = '1px solid rgba(239, 68, 68, 0.2)';
+    } else {
+        try {
+            if (navigator.permissions && navigator.permissions.query) {
+                const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+                const updateStatus = (state) => {
+                    if (state === 'granted') {
+                        statusEl.textContent = '📷 Camera: ✅ Ready (Permission Granted)';
+                        statusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+                        statusEl.style.color = '#10b981';
+                        statusEl.style.border = '1px solid rgba(16, 185, 129, 0.2)';
+                    } else if (state === 'prompt') {
+                        statusEl.textContent = '📷 Camera: ⚡ Ready (Will Ask for Permission)';
+                        statusEl.style.background = 'rgba(59, 130, 246, 0.15)';
+                        statusEl.style.color = '#3b82f6';
+                        statusEl.style.border = '1px solid rgba(59, 130, 246, 0.2)';
+                    } else {
+                        statusEl.textContent = '📷 Camera: ⚠ Blocked (Please click lock icon in URL bar to Allow)';
+                        statusEl.style.background = 'rgba(245, 158, 11, 0.15)';
+                        statusEl.style.color = '#f59e0b';
+                        statusEl.style.border = '1px solid rgba(245, 158, 11, 0.2)';
+                    }
+                };
+                updateStatus(permissionStatus.state);
+                permissionStatus.onchange = () => {
+                    updateStatus(permissionStatus.state);
+                };
+            } else {
+                statusEl.textContent = '📷 Camera: ✅ Ready';
+                statusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+                statusEl.style.color = '#10b981';
+                statusEl.style.border = '1px solid rgba(16, 185, 129, 0.2)';
+            }
+        } catch (e) {
+            statusEl.textContent = '📷 Camera: ✅ Ready';
+            statusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+            statusEl.style.color = '#10b981';
+            statusEl.style.border = '1px solid rgba(16, 185, 129, 0.2)';
+        }
+    }
+    
+    const existing = document.getElementById('cameraStatusBanner');
+    if (existing) existing.remove();
+    selectContainer.appendChild(statusEl);
+  };
+
 
   /* ═══════════════════════════════════════════════
    *  BOOTSTRAP — wire everything up
@@ -511,6 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCursorGlow();
   initHeroParallax();
   initPerformanceBars();
+  checkCameraAvailability();
 
   /* ──────────────────────────────────────────────
    *  16.  LIVE AI DASHBOARD LOGIC
