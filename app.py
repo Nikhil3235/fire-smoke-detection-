@@ -281,6 +281,70 @@ def stop():
     return jsonify({"status": "stopped"})
 
 
+@app.route('/api/process_frame', methods=['POST'])
+def api_process_frame():
+    global current_fps
+    data = request.json
+    img_b64 = data.get("image")
+    conf = float(data.get("conf", 0.4))
+    
+    if not img_b64:
+        return jsonify({"success": False, "error": "No image data"}), 400
+        
+    try:
+        import base64
+        import numpy as np
+        import cv2
+        
+        if "," in img_b64:
+            img_b64 = img_b64.split(",")[1]
+            
+        img_bytes = base64.b64decode(img_b64)
+        nparr = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify({"success": False, "error": "Invalid image"}), 400
+            
+        # Process the frame
+        if model:
+            frame, detections = process_frame(frame, conf)
+            if detections:
+                detection_log.append({
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                    "detections": detections
+                })
+                if len(detection_log) > 100:
+                    detection_log.pop(0)
+        else:
+            detections = []
+            
+        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        processed_b64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # Calculate confidences
+        fire_conf = 0.0
+        smoke_conf = 0.0
+        for d in detections:
+            if d["class"] == "Fire":
+                fire_conf = max(fire_conf, d["confidence"])
+            elif d["class"] == "Smoke":
+                smoke_conf = max(smoke_conf, d["confidence"])
+                
+        return jsonify({
+            "success": True,
+            "image": "data:image/jpeg;base64," + processed_b64,
+            "detections": detections,
+            "fire_conf": fire_conf,
+            "smoke_conf": smoke_conf,
+            "fps": round(current_fps, 1),
+            "total_detections": len(detection_log)
+        })
+    except Exception as e:
+        print(f"Error in api_process_frame: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/api/debug')
 def debug_status():
     import os

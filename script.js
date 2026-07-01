@@ -522,6 +522,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let mediaRecorder = null;
   let recordedChunks = [];
   
+  let webcamStream = null;
+  let webcamFrameId = null;
+  const hiddenCanvas = document.createElement('canvas');
+  const hiddenCtx = hiddenCanvas.getContext('2d');
+  
   // Setup Chart.js
   const chartCanvas = document.getElementById('confidenceChart');
   let confidenceChart = null;
@@ -642,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   };
 
-  window.startStream = () => {
+  window.startStream = async () => {
       const source = document.getElementById('sourceSelect').value;
       const conf = document.getElementById('thresholdSlider').value;
       
@@ -653,22 +658,122 @@ document.addEventListener('DOMContentLoaded', () => {
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
       
-      stream.src = `/video_feed?source=${source}&conf=${conf}`;
-      stream.style.display = 'block';
+      detecting = true;
       placeholder.style.display = 'none';
+      stream.style.display = 'block';
       startBtn.style.display = 'none';
       stopBtn.style.display = 'inline-flex';
+      document.getElementById('recordBtn').disabled = false;
       
       statusDot.className = 'status-dot active';
       statusText.textContent = 'Monitoring Active';
-      detecting = true;
-      
-      document.getElementById('recordBtn').disabled = false;
-      
       window.addLog(`Started monitoring source: ${source} (Threshold: ${conf}%)`);
-      statsInterval = setInterval(updateStats, 1000);
-  };
 
+      if (source === 'webcam') {
+          try {
+              webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                  video: { width: 640, height: 360, facingMode: "user" } 
+              });
+              const video = document.createElement('video');
+              video.srcObject = webcamStream;
+              video.autoplay = true;
+              video.playsInline = true;
+              window.activeVideoElement = video;
+              
+              await new Promise((resolve) => {
+                  video.onloadedmetadata = () => {
+                      video.play();
+                      resolve();
+                  };
+              });
+              
+              const fps = 12;
+              const interval = 1000 / fps;
+              let lastTime = 0;
+              let isProcessingFrame = false;
+              
+              const captureLoop = (timestamp) => {
+                  if (!detecting) return;
+                  
+                  if (timestamp - lastTime >= interval) {
+                      lastTime = timestamp;
+                      
+                      if (video.videoWidth > 0 && video.videoHeight > 0 && !isProcessingFrame) {
+                          isProcessingFrame = true;
+                          
+                          hiddenCanvas.width = 640;
+                          hiddenCanvas.height = 360;
+                          hiddenCtx.drawImage(video, 0, 0, 640, 360);
+                          
+                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.65);
+                          const threshold = document.getElementById('thresholdSlider').value / 100;
+                          
+                          fetch('/api/process_frame', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ image: dataUrl, conf: threshold })
+                          })
+                          .then(r => r.json())
+                          .then(data => {
+                              isProcessingFrame = false;
+                              if (data.success && detecting) {
+                                  stream.src = data.image;
+                                  
+                                  document.getElementById('fpsVal').textContent = data.fps;
+                                  document.getElementById('fireVal').textContent = (data.fire_conf * 100).toFixed(0) + '%';
+                                  document.getElementById('smokeVal').textContent = (data.smoke_conf * 100).toFixed(0) + '%';
+                                  
+                                  const fireConfPct = data.fire_conf * 100;
+                                  const smokeConfPct = data.smoke_conf * 100;
+                                  
+                                  if (fireConfPct > 0 || smokeConfPct > 0) {
+                                      statusDot.className = 'status-dot alert';
+                                      statusText.textContent = '⚠ CRITICAL ALERT';
+                                      window.playSiren();
+                                      
+                                      if (!window.lastAlertLogTime || Date.now() - window.lastAlertLogTime > 5000) {
+                                          window.lastAlertLogTime = Date.now();
+                                          window.addLog(`⚠ CRITICAL: Detected ${fireConfPct > 0 ? 'Fire (' + fireConfPct.toFixed(0) + '%)' : ''} ${smokeConfPct > 0 ? 'Smoke (' + smokeConfPct.toFixed(0) + '%)' : ''}`, true);
+                                      }
+                                  } else {
+                                      statusDot.className = 'status-dot active';
+                                      statusText.textContent = 'Monitoring Active';
+                                      window.stopSiren();
+                                  }
+                                  
+                                  if (confidenceChart) {
+                                      confidenceChart.data.datasets[0].data.shift();
+                                      confidenceChart.data.datasets[0].data.push(fireConfPct);
+                                      confidenceChart.data.datasets[1].data.shift();
+                                      confidenceChart.data.datasets[1].data.push(smokeConfPct);
+                                      confidenceChart.update();
+                                  }
+                                  
+                                  window.loadAlertGallery();
+                              }
+                          })
+                          .catch(err => {
+                              isProcessingFrame = false;
+                              console.error("Frame processing error:", err);
+                          });
+                      }
+                  }
+                  
+                  webcamFrameId = requestAnimationFrame(captureLoop);
+              };
+              
+              webcamFrameId = requestAnimationFrame(captureLoop);
+          } catch (err) {
+              console.error("Webcam access error:", err);
+              window.addLog("❌ Error: Could not access local camera. Ensure permissions are granted.", true);
+              window.stopStream();
+          }
+      } else {
+          stream.src = `/video_feed?source=${source}&conf=${conf}`;
+          statsInterval = setInterval(updateStats, 1000);
+      }
+  };
+ 
   window.stopStream = () => {
       fetch('/stop').then(() => {
           const stream = document.getElementById('videoStream');
@@ -688,6 +793,15 @@ document.addEventListener('DOMContentLoaded', () => {
           statusText.textContent = 'System Ready';
           detecting = false;
           
+          if (webcamStream) {
+              webcamStream.getTracks().forEach(track => track.stop());
+              webcamStream = null;
+          }
+          if (webcamFrameId) {
+              cancelAnimationFrame(webcamFrameId);
+              webcamFrameId = null;
+          }
+          
           if (mediaRecorder && mediaRecorder.state !== 'inactive') {
               mediaRecorder.stop();
           }
@@ -695,7 +809,10 @@ document.addEventListener('DOMContentLoaded', () => {
           
           window.stopSiren();
           
-          if (statsInterval) clearInterval(statsInterval);
+          if (statsInterval) {
+              clearInterval(statsInterval);
+              statsInterval = null;
+          }
           window.addLog("Monitoring stopped.");
       });
   };

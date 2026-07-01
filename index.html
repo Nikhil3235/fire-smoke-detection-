@@ -349,9 +349,9 @@
                         
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                             <h4 style="font-size: 0.95rem; font-weight: 600;"><i class="fas fa-shield-halved" style="color: var(--accent-teal); margin-right: 0.5rem;"></i> Enable SMS Alerts</h4>
-                            <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                                <input type="checkbox" id="smsEnable" onchange="saveNotificationConfig()" style="opacity: 0; width: 0; height: 0;">
-                                <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #333; transition: .4s; border-radius: 34px;"></span>
+                            <label class="switch">
+                                <input type="checkbox" id="smsEnable" onchange="saveNotificationConfig()">
+                                <span class="slider"></span>
                             </label>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -388,9 +388,9 @@
                                 <p style="font-size: 0.75rem; color: var(--text-secondary);">Play alarm sound in browser</p>
                             </div>
                         </div>
-                        <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                            <input type="checkbox" id="alarmToggle" style="opacity: 0; width: 0; height: 0;">
-                            <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #333; transition: .4s; border-radius: 34px;"></span>
+                        <label class="switch">
+                            <input type="checkbox" id="alarmToggle">
+                            <span class="slider"></span>
                         </label>
                     </div>
 
@@ -439,7 +439,7 @@
                             <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                                 <label style="font-size: 0.82rem; color: var(--text-secondary);">Video Source</label>
                                 <select id="sourceSelect" style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); outline: none; cursor: pointer;">
-                                    <option value="webcam">📷 Live Camera (Auto-Fallback in Cloud)</option>
+                                    <option value="webcam">📷 Live Web Camera (Real-Time)</option>
                                     <option value="static/sample-fire.mp4">🎬 Demo: Forest Fire Video</option>
                                     <option value="static/sample-smoke.mp4">🎬 Demo: Smoke Hazard Video</option>
                                 </select>

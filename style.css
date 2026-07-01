@@ -2403,3 +2403,104 @@ button:focus-visible {
     color: #ff6b35;
   }
 }
+
+/* ──────────────────────────────────────────────
+   PREMIUM CUSTOM TOGGLE SWITCHES
+   ────────────────────────────────────────────── */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #252830;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 34px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 3px;
+    background-color: #8c909e;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Checked State - Glowing Orange Gradient */
+input:checked + .slider {
+    background: linear-gradient(135deg, #ff4e00, #ec9f05);
+    border-color: rgba(255, 78, 0, 0.25);
+    box-shadow: 0 0 10px rgba(255, 78, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+    background-color: #ffffff;
+    box-shadow: 0 0 6px #ffffff;
+}
+
+/* Hover effects */
+.switch:hover .slider {
+    border-color: rgba(255, 255, 255, 0.18);
+}
+.switch:hover input:checked + .slider {
+    box-shadow: 0 0 14px rgba(255, 78, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
+/* ──────────────────────────────────────────────
+   SHINY PREMIUM AVATAR SHIMMER EFFECT
+   ────────────────────────────────────────────── */
+.about-avatar {
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 78, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.about-avatar::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -60%;
+    width: 25%;
+    height: 200%;
+    background: linear-gradient(
+        to right, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.08) 20%, 
+        rgba(255, 255, 255, 0.45) 50%, 
+        rgba(255, 255, 255, 0.08) 80%, 
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: rotate(28deg);
+    animation: avatar-shimmer 4s infinite linear;
+    z-index: 3;
+    pointer-events: none;
+}
+
+@keyframes avatar-shimmer {
+    0% {
+        left: -70%;
+    }
+    100% {
+        left: 150%;
+    }
+}
