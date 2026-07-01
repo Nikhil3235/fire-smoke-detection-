@@ -743,27 +743,33 @@ document.addEventListener('DOMContentLoaded', () => {
               webcamStream = await navigator.mediaDevices.getUserMedia({ 
                   video: { width: 640, height: 360, facingMode: "user" } 
               });
-              const video = document.createElement('video');
-              video.id = 'hiddenWebcamVideo';
-              video.srcObject = webcamStream;
-              video.autoplay = true;
-              video.playsInline = true;
-              video.muted = true;
-              video.style.position = 'absolute';
-              video.style.width = '0';
-              video.style.height = '0';
-              video.style.opacity = '0';
-              video.style.pointerEvents = 'none';
-              document.body.appendChild(video);
-              window.activeVideoElement = video;
+              
+              const webcamVideo = document.getElementById('webcamVideo');
+              const detectionCanvas = document.getElementById('detectionCanvas');
+              
+              // Hide image feed and show live video/canvas overlay
+              stream.style.display = 'none';
+              webcamVideo.style.display = 'block';
+              detectionCanvas.style.display = 'block';
+              
+              webcamVideo.srcObject = webcamStream;
+              webcamVideo.autoplay = true;
+              webcamVideo.playsInline = true;
+              webcamVideo.muted = true;
+              window.activeVideoElement = webcamVideo;
               
               try {
-                  await video.play();
+                  await webcamVideo.play();
               } catch (e) {
-                  console.warn("video.play() failed initially, retrying...", e);
+                  console.warn("webcamVideo.play() failed initially, retrying...", e);
               }
               
-              const fps = 12;
+              // Initialize detection canvas sizing
+              detectionCanvas.width = 640;
+              detectionCanvas.height = 360;
+              const canvasCtx = detectionCanvas.getContext('2d');
+              
+              const fps = 6; // Process 6 times per second in the background (very lightweight, 0 lag!)
               const interval = 1000 / fps;
               let lastTime = 0;
               let isProcessingFrame = false;
@@ -774,26 +780,62 @@ document.addEventListener('DOMContentLoaded', () => {
                   if (timestamp - lastTime >= interval) {
                       lastTime = timestamp;
                       
-                      if (video.videoWidth > 0 && video.videoHeight > 0 && !isProcessingFrame) {
+                      if (webcamVideo.videoWidth > 0 && webcamVideo.videoHeight > 0 && !isProcessingFrame) {
                           isProcessingFrame = true;
                           
-                          hiddenCanvas.width = 640;
-                          hiddenCanvas.height = 360;
-                          hiddenCtx.drawImage(video, 0, 0, 640, 360);
+                          // Use a smaller canvas for inference upload to make it ultra fast (320x180)
+                          hiddenCanvas.width = 320;
+                          hiddenCanvas.height = 180;
+                          hiddenCtx.drawImage(webcamVideo, 0, 0, 320, 180);
                           
-                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.65);
+                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.5); // lower quality to shrink payload size
                           const threshold = document.getElementById('thresholdSlider').value / 100;
                           
                           fetch('/api/process_frame', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ image: dataUrl, conf: threshold })
+                              body: JSON.stringify({ image: dataUrl, conf: threshold, return_image: false })
                           })
                           .then(r => r.json())
                           .then(data => {
                               isProcessingFrame = false;
                               if (data.success && detecting) {
-                                  stream.src = data.image;
+                                  // Clear detection canvas
+                                  canvasCtx.clearRect(0, 0, 640, 360);
+                                  
+                                  // Draw neon premium bounding boxes locally in real-time
+                                  if (data.detections && data.detections.length > 0) {
+                                      data.detections.forEach(d => {
+                                          // Rescale coordinates from 320x180 (inference size) back to 640x360 (display size)
+                                          const x1 = d.bbox[0] * 2;
+                                          const y1 = d.bbox[1] * 2;
+                                          const x2 = d.bbox[2] * 2;
+                                          const y2 = d.bbox[3] * 2;
+                                          
+                                          const w = x2 - x1;
+                                          const h = y2 - y1;
+                                          const isFire = d.class === 'Fire';
+                                          
+                                          canvasCtx.strokeStyle = isFire ? '#ff4d00' : '#8a90a0';
+                                          canvasCtx.lineWidth = 3;
+                                          canvasCtx.shadowColor = isFire ? 'rgba(255, 77, 0, 0.4)' : 'rgba(138, 144, 160, 0.3)';
+                                          canvasCtx.shadowBlur = 8;
+                                          
+                                          // Bounding box
+                                          canvasCtx.strokeRect(x1, y1, w, h);
+                                          
+                                          // Label tag
+                                          canvasCtx.fillStyle = isFire ? '#ff4d00' : '#8a90a0';
+                                          canvasCtx.shadowBlur = 0; // reset shadow for text
+                                          const labelText = `${d.class} ${d.confidence.toFixed(0)}%`;
+                                          canvasCtx.font = 'bold 12px Outfit, sans-serif';
+                                          const textWidth = canvasCtx.measureText(labelText).width;
+                                          
+                                          canvasCtx.fillRect(x1 - 1, y1 - 20, textWidth + 12, 20);
+                                          canvasCtx.fillStyle = '#ffffff';
+                                          canvasCtx.fillText(labelText, x1 + 5, y1 - 6);
+                                      });
+                                  }
                                   
                                   document.getElementById('fpsVal').textContent = data.fps;
                                   document.getElementById('fireVal').textContent = (data.fire_conf * 100).toFixed(0) + '%';
@@ -846,6 +888,13 @@ document.addEventListener('DOMContentLoaded', () => {
               window.stopStream();
           }
       } else {
+          // Hide webcam elements and show image stream
+          const webcamVideo = document.getElementById('webcamVideo');
+          const detectionCanvas = document.getElementById('detectionCanvas');
+          if (webcamVideo) webcamVideo.style.display = 'none';
+          if (detectionCanvas) detectionCanvas.style.display = 'none';
+          stream.style.display = 'block';
+          
           stream.src = `/video_feed?source=${source}&conf=${conf}`;
           statsInterval = setInterval(updateStats, 1000);
       }
@@ -874,11 +923,17 @@ document.addEventListener('DOMContentLoaded', () => {
               webcamStream.getTracks().forEach(track => track.stop());
               webcamStream = null;
           }
-          const hiddenVideo = document.getElementById('hiddenWebcamVideo');
-          if (hiddenVideo) {
-              hiddenVideo.pause();
-              hiddenVideo.srcObject = null;
-              hiddenVideo.remove();
+          const webcamVideo = document.getElementById('webcamVideo');
+          const detectionCanvas = document.getElementById('detectionCanvas');
+          if (webcamVideo) {
+              webcamVideo.pause();
+              webcamVideo.srcObject = null;
+              webcamVideo.style.display = 'none';
+          }
+          if (detectionCanvas) {
+              const canvasCtx = detectionCanvas.getContext('2d');
+              canvasCtx.clearRect(0, 0, 640, 360);
+              detectionCanvas.style.display = 'none';
           }
           if (webcamFrameId) {
               cancelAnimationFrame(webcamFrameId);

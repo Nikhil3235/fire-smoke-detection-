@@ -319,8 +319,12 @@ def api_process_frame():
         else:
             detections = []
             
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        processed_b64 = base64.b64encode(buffer).decode('utf-8')
+        return_image = data.get("return_image", True)
+        processed_b64 = None
+        
+        if return_image:
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            processed_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
         
         # Calculate confidences
         fire_conf = 0.0
@@ -333,7 +337,7 @@ def api_process_frame():
                 
         return jsonify({
             "success": True,
-            "image": "data:image/jpeg;base64," + processed_b64,
+            "image": processed_b64,
             "detections": detections,
             "fire_conf": fire_conf,
             "smoke_conf": smoke_conf,
