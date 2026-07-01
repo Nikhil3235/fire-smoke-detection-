@@ -21,3 +21,16 @@ jobs:
         run: |
           # Push the code directly to Hugging Face Space using the token
           git push --force https://Nikhil3235:$HF_TOKEN@huggingface.co/spaces/Nikhil3235/fire-smoke-detection main
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Hugging Face Hub CLI
+        run: pip install huggingface_hub requests
+
+      - name: Upload Large Assets via Hub API
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python upload_assets.py
