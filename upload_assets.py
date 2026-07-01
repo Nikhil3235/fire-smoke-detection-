@@ -1,17 +1,22 @@
 import os
+import sys
 import urllib.request
 from huggingface_hub import HfApi
 
 def download_file(url, dest):
-    print(f"Downloading {url} to {dest}...")
+    print(f"📥 Downloading {url} to {dest}...")
+    # Add a custom User-Agent to be safe
+    opener = urllib.request.build_opener()
+    opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
+    urllib.request.install_opener(opener)
     urllib.request.urlretrieve(url, dest)
-    print(f"Downloaded {dest} ({os.path.getsize(dest)} bytes)")
+    print(f"✅ Downloaded {dest} ({os.path.getsize(dest)} bytes)")
 
 def main():
     token = os.environ.get("HF_TOKEN")
     if not token:
-        print("Error: HF_TOKEN env var not set")
-        return
+        print("❌ Error: HF_TOKEN env var not set")
+        sys.exit(1)
 
     # Create directories
     os.makedirs("models", exist_ok=True)
@@ -28,23 +33,17 @@ def main():
 
     for url, path in assets:
         if not os.path.exists(path):
-            try:
-                download_file(url, path)
-            except Exception as e:
-                print(f"Error downloading {url}: {e}")
-                continue
-        print(f"Uploading {path} to Hugging Face Space...")
-        try:
-            api.upload_file(
-                path_or_fileobj=path,
-                path_in_repo=path,
-                repo_id="Nikhil3235/fire-smoke-detection",
-                repo_type="space",
-                token=token
-            )
-            print(f"Successfully uploaded {path}!")
-        except Exception as e:
-            print(f"Error uploading {path}: {e}")
+            download_file(url, path)
+        
+        print(f"🚀 Uploading {path} to Hugging Face Space...")
+        api.upload_file(
+            path_or_fileobj=path,
+            path_in_repo=path,
+            repo_id="Nikhil3235/fire-smoke-detection",
+            repo_type="space",
+            token=token
+        )
+        print(f"✨ Successfully uploaded {path}!")
 
 if __name__ == "__main__":
     main()
