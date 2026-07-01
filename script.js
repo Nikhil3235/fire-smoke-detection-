@@ -856,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
               detectionCanvas.height = 360;
               const canvasCtx = detectionCanvas.getContext('2d');
               
-              const fps = 6; // Process 6 times per second in the background (very lightweight, 0 lag!)
+              const fps = 12; // Process 12 times per second for lightning fast detection
               const interval = 1000 / fps;
               let lastTime = 0;
               let isProcessingFrame = false;
@@ -870,12 +870,12 @@ document.addEventListener('DOMContentLoaded', () => {
                       if (webcamVideo.videoWidth > 0 && webcamVideo.videoHeight > 0 && !isProcessingFrame) {
                           isProcessingFrame = true;
                           
-                          // Use a smaller canvas for inference upload to make it ultra fast (320x180)
-                          hiddenCanvas.width = 320;
-                          hiddenCanvas.height = 180;
-                          hiddenCtx.drawImage(webcamVideo, 0, 0, 320, 180);
+                          // Use full 640x360 resolution so we don't miss small fires
+                          hiddenCanvas.width = 640;
+                          hiddenCanvas.height = 360;
+                          hiddenCtx.drawImage(webcamVideo, 0, 0, 640, 360);
                           
-                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.5); // lower quality to shrink payload size
+                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.6); // better quality to retain details
                           const threshold = document.getElementById('thresholdSlider').value / 100;
                           
                           fetch('/api/process_frame', {
@@ -893,11 +893,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                   // Draw neon premium bounding boxes locally in real-time
                                   if (data.detections && data.detections.length > 0) {
                                       data.detections.forEach(d => {
-                                          // Rescale coordinates from 320x180 (inference size) back to 640x360 (display size)
-                                          const x1 = d.bbox[0] * 2;
-                                          const y1 = d.bbox[1] * 2;
-                                          const x2 = d.bbox[2] * 2;
-                                          const y2 = d.bbox[3] * 2;
+                                          // Coordinates match 640x360 perfectly now
+                                          const x1 = d.bbox[0];
+                                          const y1 = d.bbox[1];
+                                          const x2 = d.bbox[2];
+                                          const y2 = d.bbox[3];
                                           
                                           const w = x2 - x1;
                                           const h = y2 - y1;
