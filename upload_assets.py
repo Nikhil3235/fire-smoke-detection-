@@ -3,19 +3,25 @@ import sys
 import urllib.request
 from huggingface_hub import HfApi
 
+# Custom print that writes to console and a log file
+log_file = open("upload_log.txt", "w", encoding="utf-8")
+def log_print(*args, **kwargs):
+    print(*args, **kwargs)
+    print(*args, file=log_file, **kwargs)
+    log_file.flush()
+
 def download_file(url, dest):
-    print(f"📥 Downloading {url} to {dest}...")
-    # Add a custom User-Agent to be safe
+    log_print(f"📥 Downloading {url} to {dest}...")
     opener = urllib.request.build_opener()
     opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
     urllib.request.install_opener(opener)
     urllib.request.urlretrieve(url, dest)
-    print(f"✅ Downloaded {dest} ({os.path.getsize(dest)} bytes)")
+    log_print(f"✅ Downloaded {dest} ({os.path.getsize(dest)} bytes)")
 
 def main():
     token = os.environ.get("HF_TOKEN")
     if not token:
-        print("❌ Error: HF_TOKEN env var not set")
+        log_print("❌ Error: HF_TOKEN env var not set")
         sys.exit(1)
 
     # Create directories
@@ -33,17 +39,40 @@ def main():
 
     for url, path in assets:
         if not os.path.exists(path):
-            download_file(url, path)
+            try:
+                download_file(url, path)
+            except Exception as e:
+                log_print(f"❌ Error downloading {url}: {e}")
+                sys.exit(1)
         
-        print(f"🚀 Uploading {path} to Hugging Face Space...")
+        log_print(f"🚀 Uploading {path} to Hugging Face Space...")
+        try:
+            api.upload_file(
+                path_or_fileobj=path,
+                path_in_repo=path,
+                repo_id="Nikhil3235/fire-smoke-detection",
+                repo_type="space",
+                token=token
+            )
+            log_print(f"✨ Successfully uploaded {path}!")
+        except Exception as e:
+            log_print(f"❌ Error uploading {path}: {e}")
+            sys.exit(1)
+
+    # Finally, upload the log file itself so we can read it!
+    log_file.close()
+    print("Uploading log file to Hugging Face Space...")
+    try:
         api.upload_file(
-            path_or_fileobj=path,
-            path_in_repo=path,
+            path_or_fileobj="upload_log.txt",
+            path_in_repo="upload_log.txt",
             repo_id="Nikhil3235/fire-smoke-detection",
             repo_type="space",
             token=token
         )
-        print(f"✨ Successfully uploaded {path}!")
+        print("Log file uploaded successfully!")
+    except Exception as e:
+        print(f"Error uploading log file: {e}")
 
 if __name__ == "__main__":
     main()
