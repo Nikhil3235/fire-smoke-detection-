@@ -281,6 +281,20 @@ def stop():
     return jsonify({"status": "stopped"})
 
 
+@app.route('/api/debug')
+def debug_status():
+    import os
+    files = ["models/best.pt", "static/sample-fire.mp4", "static/sample-smoke.mp4"]
+    res = {}
+    for f in files:
+        exist = os.path.exists(f)
+        res[f] = {
+            "exists": exist,
+            "size": os.path.getsize(f) if exist else 0
+        }
+    return jsonify(res)
+
+
 @app.route('/stats')
 def stats():
     fire_count = 0
