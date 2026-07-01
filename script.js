@@ -812,12 +812,27 @@ document.addEventListener('DOMContentLoaded', () => {
               if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                   throw new Error("Camera API is blocked on this page context by your browser. Please make sure camera permission is allowed in your site settings.");
               }
+              
+              if (!window.currentFacingMode) window.currentFacingMode = 'environment';
+              
               webcamStream = await navigator.mediaDevices.getUserMedia({ 
-                  video: { width: 640, height: 360, facingMode: "user" } 
+                  video: { width: 640, height: 360, facingMode: window.currentFacingMode } 
               });
               
               const webcamVideo = document.getElementById('webcamVideo');
               const detectionCanvas = document.getElementById('detectionCanvas');
+              const flipBtn = document.getElementById('flipBtn');
+              
+              if (flipBtn) flipBtn.style.display = 'inline-flex';
+              
+              // Handle mirroring: only mirror if front camera ("user")
+              if (window.currentFacingMode === 'user') {
+                  webcamVideo.style.transform = 'scaleX(-1)';
+                  detectionCanvas.style.transform = 'scaleX(-1)';
+              } else {
+                  webcamVideo.style.transform = 'scaleX(1)';
+                  detectionCanvas.style.transform = 'scaleX(1)';
+              }
               
               // Hide image feed and show live video/canvas overlay
               stream.style.display = 'none';
@@ -986,6 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
           placeholder.style.display = 'flex';
           startBtn.style.display = 'inline-flex';
           stopBtn.style.display = 'none';
+          const flipBtn = document.getElementById('flipBtn');
+          if (flipBtn) flipBtn.style.display = 'none';
           
           if (statusDot) statusDot.className = 'status-dot';
           if (statusText) statusText.textContent = 'System Ready';
@@ -1025,6 +1042,26 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           window.addLog("Monitoring stopped.");
       });
+  };
+
+  window.flipCamera = async () => {
+      // Toggle facing mode
+      window.currentFacingMode = (window.currentFacingMode === 'environment') ? 'user' : 'environment';
+      window.addLog(`Switched camera to: ${window.currentFacingMode === 'environment' ? 'Rear' : 'Front'}`);
+      
+      // Stop current webcam tracks but keep session alive
+      if (webcamStream) {
+          webcamStream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Cancel previous rAF loops to prevent doubling
+      if (webcamFrameId) {
+          cancelAnimationFrame(webcamFrameId);
+          webcamFrameId = null;
+      }
+      
+      // Restart stream with new camera
+      await window.startStream();
   };
 
   function updateStats() {
