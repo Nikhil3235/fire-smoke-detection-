@@ -861,10 +861,10 @@ document.addEventListener('DOMContentLoaded', () => {
               detectionCanvas.height = 360;
               const canvasCtx = detectionCanvas.getContext('2d');
               
-              const fps = 20; // 20 FPS for ultra-low latency (<0.1s capture time)
+              const fps = 8; // 8 FPS for optimal real-time performance without queue lag
               const interval = 1000 / fps;
               let lastTime = 0;
-              let concurrentRequests = 0; // Allow up to 3 requests in flight to defeat network latency
+              let isProcessingFrame = false; // Prevent HF server queue lag!
               
               const captureLoop = (timestamp) => {
                   if (!detecting) return;
@@ -872,15 +872,23 @@ document.addEventListener('DOMContentLoaded', () => {
                   if (timestamp - lastTime >= interval) {
                       lastTime = timestamp;
                       
-                      if (webcamVideo.videoWidth > 0 && webcamVideo.videoHeight > 0 && concurrentRequests < 3) {
-                          concurrentRequests++;
+                      const vw = webcamVideo.videoWidth;
+                      const vh = webcamVideo.videoHeight;
+                      
+                      if (vw > 0 && vh > 0 && !isProcessingFrame) {
+                          isProcessingFrame = true;
                           
-                          // Use full 640x360 resolution so we don't miss small fires
-                          hiddenCanvas.width = 640;
-                          hiddenCanvas.height = 360;
-                          hiddenCtx.drawImage(webcamVideo, 0, 0, 640, 360);
+                          // Dynamically scale resolution while preserving aspect ratio! (Crucial for mobile portrait cameras)
+                          const scale = Math.min(640 / vw, 640 / vh);
+                          const targetW = Math.round(vw * scale);
+                          const targetH = Math.round(vh * scale);
                           
-                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.6); // better quality to retain details
+                          // Use dynamic resolution so we don't squash mobile cameras
+                          hiddenCanvas.width = targetW;
+                          hiddenCanvas.height = targetH;
+                          hiddenCtx.drawImage(webcamVideo, 0, 0, targetW, targetH);
+                          
+                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.8); // 80% quality for better smoke detection
                           const threshold = document.getElementById('thresholdSlider').value / 100;
                           
                           fetch('/api/process_frame', {
@@ -890,15 +898,21 @@ document.addEventListener('DOMContentLoaded', () => {
                           })
                           .then(r => r.json())
                           .then(data => {
-                              concurrentRequests--;
+                              isProcessingFrame = false;
                               if (data.success && detecting) {
+                                  // Update detection canvas to match the exact aspect ratio!
+                                  if (detectionCanvas.width !== targetW || detectionCanvas.height !== targetH) {
+                                      detectionCanvas.width = targetW;
+                                      detectionCanvas.height = targetH;
+                                  }
+                                  
                                   // Clear detection canvas
-                                  canvasCtx.clearRect(0, 0, 640, 360);
+                                  canvasCtx.clearRect(0, 0, targetW, targetH);
                                   
                                   // Draw neon premium bounding boxes locally in real-time
                                   if (data.detections && data.detections.length > 0) {
                                       data.detections.forEach(d => {
-                                          // Coordinates match 640x360 perfectly now
+                                          // Coordinates match the dynamic resolution
                                           const x1 = d.bbox[0];
                                           const y1 = d.bbox[1];
                                           const x2 = d.bbox[2];
@@ -909,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                           const isFire = d.class === 'Fire';
                                           
                                           canvasCtx.strokeStyle = isFire ? '#ff4d00' : '#8a90a0';
-                                          canvasCtx.lineWidth = 3;
+                                          canvasCtx.lineWidth = Math.max(2, Math.round(targetW / 150));
                                           canvasCtx.shadowColor = isFire ? 'rgba(255, 77, 0, 0.4)' : 'rgba(138, 144, 160, 0.3)';
                                           canvasCtx.shadowBlur = 8;
                                           
