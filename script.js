@@ -861,10 +861,12 @@ document.addEventListener('DOMContentLoaded', () => {
               detectionCanvas.height = 360;
               const canvasCtx = detectionCanvas.getContext('2d');
               
-              const fps = 8; // 8 FPS for optimal real-time performance without queue lag
+              const fps = 20; // 20 FPS for silky smooth bounding box tracking!
               const interval = 1000 / fps;
               let lastTime = 0;
-              let isProcessingFrame = false; // Prevent HF server queue lag!
+              let frameSeq = 0;
+              let lastProcessedSeq = 0;
+              let concurrentRequests = 0;
               
               const captureLoop = (timestamp) => {
                   if (!detecting) return;
@@ -875,8 +877,11 @@ document.addEventListener('DOMContentLoaded', () => {
                       const vw = webcamVideo.videoWidth;
                       const vh = webcamVideo.videoHeight;
                       
-                      if (vw > 0 && vh > 0 && !isProcessingFrame) {
-                          isProcessingFrame = true;
+                      // Allow up to 4 concurrent requests to keep a smooth pipeline over the network
+                      if (vw > 0 && vh > 0 && concurrentRequests < 4) {
+                          concurrentRequests++;
+                          frameSeq++;
+                          const currentSeq = frameSeq;
                           
                           // Dynamically scale resolution while preserving aspect ratio! (Crucial for mobile portrait cameras)
                           const scale = Math.min(640 / vw, 640 / vh);
@@ -894,12 +899,16 @@ document.addEventListener('DOMContentLoaded', () => {
                           fetch('/api/process_frame', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ image: dataUrl, conf: threshold, return_image: false, session_id: window.sessionId })
+                              body: JSON.stringify({ image: dataUrl, conf: threshold, return_image: false, session_id: window.sessionId, seq: currentSeq })
                           })
                           .then(r => r.json())
                           .then(data => {
-                              isProcessingFrame = false;
+                              concurrentRequests--;
                               if (data.success && detecting) {
+                                  // Time-travel prevention: discard older frames that arrived late!
+                                  if (data.seq < lastProcessedSeq) return;
+                                  lastProcessedSeq = data.seq;
+                                  
                                   // Update detection canvas to match the exact aspect ratio!
                                   if (detectionCanvas.width !== targetW || detectionCanvas.height !== targetH) {
                                       detectionCanvas.width = targetW;
@@ -920,18 +929,27 @@ document.addEventListener('DOMContentLoaded', () => {
                                           
                                           const w = x2 - x1;
                                           const h = y2 - y1;
-                                          const isFire = d.class === 'Fire';
                                           
-                                          canvasCtx.strokeStyle = isFire ? '#ff4d00' : '#8a90a0';
+                                          let boxColor = '#8a90a0'; // Default gray
+                                          let shadowColor = 'rgba(138, 144, 160, 0.3)';
+                                          if (d.class === 'Fire') {
+                                              boxColor = '#ff4d00';
+                                              shadowColor = 'rgba(255, 77, 0, 0.4)';
+                                          } else if (d.class.includes('Living Person')) {
+                                              boxColor = '#00ff6a';
+                                              shadowColor = 'rgba(0, 255, 106, 0.4)';
+                                          }
+                                          
+                                          canvasCtx.strokeStyle = boxColor;
                                           canvasCtx.lineWidth = Math.max(2, Math.round(targetW / 150));
-                                          canvasCtx.shadowColor = isFire ? 'rgba(255, 77, 0, 0.4)' : 'rgba(138, 144, 160, 0.3)';
+                                          canvasCtx.shadowColor = shadowColor;
                                           canvasCtx.shadowBlur = 8;
                                           
                                           // Bounding box
                                           canvasCtx.strokeRect(x1, y1, w, h);
                                           
                                           // Label tag
-                                          canvasCtx.fillStyle = isFire ? '#ff4d00' : '#8a90a0';
+                                          canvasCtx.fillStyle = boxColor;
                                           canvasCtx.shadowBlur = 0; // reset shadow for text
                                           const labelText = `${d.class} ${d.confidence.toFixed(0)}%`;
                                           canvasCtx.font = 'bold 12px Outfit, sans-serif';
@@ -939,6 +957,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                           
                                           canvasCtx.fillRect(x1 - 1, y1 - 20, textWidth + 12, 20);
                                           canvasCtx.fillStyle = '#ffffff';
+                                          if (boxColor === '#00ff6a') {
+                                              canvasCtx.fillStyle = '#000000'; // Dark text for green background
+                                          }
                                           canvasCtx.fillText(labelText, x1 + 5, y1 - 6);
                                       });
                                   }
@@ -946,6 +967,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                   document.getElementById('fpsVal').textContent = data.fps;
                                   document.getElementById('fireVal').textContent = (data.fire_conf * 100).toFixed(0) + '%';
                                   document.getElementById('smokeVal').textContent = (data.smoke_conf * 100).toFixed(0) + '%';
+                                  const peopleValEl = document.getElementById('peopleVal');
+                                  if (peopleValEl) peopleValEl.textContent = data.people_count || 0;
                                   
                                   const fireConfPct = data.fire_conf * 100;
                                   const smokeConfPct = data.smoke_conf * 100;
@@ -977,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
                               }
                           })
                           .catch(err => {
-                              isProcessingFrame = false;
+                              concurrentRequests--;
                               console.error("Frame processing error:", err);
                           });
                       }

@@ -38,6 +38,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # ── Global Variables ──────────────────────────────────────────
 model = None
+model_person = None
 camera = None
 is_detecting = False
 current_fps = 0
@@ -61,8 +62,8 @@ CLASS_NAMES = {0: "Fire", 1: "Smoke"}
 
 
 def load_model(weights_path="models/best.pt"):
-    """Load the YOLOv8 model."""
-    global model
+    """Load the YOLOv8 models."""
+    global model, model_person
     try:
         from ultralytics import YOLO
         if not os.path.exists(weights_path):
@@ -70,6 +71,11 @@ def load_model(weights_path="models/best.pt"):
             return False
         model = YOLO(weights_path)
         print("✅ YOLOv8 Custom Fire/Smoke Model Loaded Successfully!")
+        
+        # Load standard YOLO for person detection
+        print("⏳ Loading YOLOv8n for Person Detection...")
+        model_person = YOLO("yolov8n.pt") 
+        print("✅ YOLOv8n Person Model Loaded Successfully!")
         return True
     except Exception as e:
         print(f"❌ Error loading model: {e}")
@@ -114,8 +120,13 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     
     start_time = time.time()
     
-    # Run detection
+    # Run detection on Fire/Smoke Model
     results = model.predict(frame, conf=conf_threshold, verbose=False)
+    
+    # Run detection on Person Model (if loaded)
+    person_results = None
+    if model_person:
+        person_results = model_person.predict(frame, conf=0.4, verbose=False)
     
     detections = []
     fire_detected = False
@@ -123,6 +134,7 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     max_conf = 0.0
     alert_label = ""
     
+    # Process Fire/Smoke
     for result in results:
         boxes = result.boxes
         if boxes is None:
@@ -146,23 +158,37 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                 max_conf = confidence
                 alert_label = label
                 
-            color = CLASS_COLORS.get(class_id, (0, 255, 0))
-            conf_text = f"{label} {confidence:.0%}"
-            
-            # Draw bounding box
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
-            
-            # Label background
-            (tw, th), _ = cv2.getTextSize(conf_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-            cv2.rectangle(frame, (x1, y1 - th - 15), (x1 + tw + 10, y1), color, -1)
-            cv2.putText(frame, conf_text, (x1 + 5, y1 - 8),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            
             detections.append({
                 "class": label,
                 "confidence": round(confidence * 100, 1),
                 "bbox": [x1, y1, x2, y2]
             })
+
+    # Process People
+    if person_results:
+        person_count = 1
+        for result in person_results:
+            boxes = result.boxes
+            if boxes is None:
+                continue
+            for box in boxes:
+                class_id = int(box.cls[0])
+                if class_id == 0:  # COCO class 0 is person
+                    confidence = float(box.conf[0])
+                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                    
+                    # Heuristic for Living vs Doll
+                    if confidence > 0.65:
+                        label = f"Living Person {person_count}"
+                        person_count += 1
+                    else:
+                        label = "Doll"
+                        
+                    detections.append({
+                        "class": label,
+                        "confidence": round(confidence * 100, 1),
+                        "bbox": [x1, y1, x2, y2]
+                    })
     
     # Auto-save frame and send notifications (with cooldown)
     current_time = time.time()
@@ -288,6 +314,7 @@ def api_process_frame():
     img_b64 = data.get("image")
     conf = float(data.get("conf", 0.4))
     session_id = data.get("session_id", "default")
+    seq = data.get("seq", 0)
     
     if not img_b64:
         return jsonify({"success": False, "error": "No image data"}), 400
@@ -327,21 +354,26 @@ def api_process_frame():
             _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
             processed_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
         
-        # Calculate confidences
+        # Calculate confidences and counts
         fire_conf = 0.0
         smoke_conf = 0.0
+        people_count = 0
         for d in detections:
             if d["class"] == "Fire":
                 fire_conf = max(fire_conf, d["confidence"])
             elif d["class"] == "Smoke":
                 smoke_conf = max(smoke_conf, d["confidence"])
+            elif "Person" in d["class"]:
+                people_count += 1
                 
         return jsonify({
             "success": True,
+            "seq": seq,
             "image": processed_b64,
             "detections": detections,
             "fire_conf": fire_conf,
             "smoke_conf": smoke_conf,
+            "people_count": people_count,
             "fps": round(current_fps, 1),
             "total_detections": len(detection_log)
         })

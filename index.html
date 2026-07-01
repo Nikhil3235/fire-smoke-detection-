@@ -404,7 +404,7 @@
                         <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem;">
                             <i class="fas fa-chart-line" style="color: var(--fire-primary);"></i> Live Analytics
                         </h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                             <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
                                 <div class="val" id="fireVal" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--fire-primary);">0%</div>
                                 <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">🔥 Fire Conf</div>
@@ -416,6 +416,10 @@
                             <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
                                 <div class="val" id="fpsVal" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--accent-teal);">0</div>
                                 <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">⚡ FPS</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+                                <div class="val" id="peopleVal" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: #00ff6a;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.3rem;">🧍 Trapped People</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
                                 <div class="val" id="alertsCount" style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--fire-primary);">0</div>
@@ -449,11 +453,12 @@
                                     <option value="static/sample-smoke.mp4">🎬 Demo: Smoke Hazard Video</option>
                                 </select>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                                <label style="font-size: 0.82rem; color: var(--text-secondary);">
-                                    Confidence Threshold: <span id="thresholdVal" style="color: var(--fire-primary); font-weight: bold;">40%</span>
+                            <div class="control-group">
+                                <label style="display: flex; justify-content: space-between;">
+                                    <span style="font-weight: 500; font-size: 0.95rem;">AI Confidence Threshold</span>
+                                    <span id="thresholdVal" style="color: var(--fire-primary); font-weight: 700;">65%</span>
                                 </label>
-                                <input type="range" id="thresholdSlider" min="15" max="95" value="40" style="accent-color: var(--fire-primary);" oninput="document.getElementById('thresholdVal').textContent = this.value + '%'">
+                                <input type="range" id="thresholdSlider" min="15" max="95" value="65" style="accent-color: var(--fire-primary);" oninput="document.getElementById('thresholdVal').textContent = this.value + '%'">
                             </div>
                         </div>
                     </div>
@@ -787,6 +792,6 @@
         </div>
     </footer>
 
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=11"></script>
 </body>
 </html>
