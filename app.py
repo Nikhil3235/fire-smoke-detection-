@@ -462,10 +462,17 @@ def process_frame(frame, conf_threshold=0.4, session_id="default", draw_boxes=Fa
 
 
 def generate_frames(source, conf=0.4):
-    """Generator function for video streaming with frame skipping to maintain 1.0x realtime speed."""
+    """Generator function for video/image streaming with frame skipping to maintain realtime speed."""
     global is_detecting, camera
     
-    if source == "webcam":
+    is_image = source.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))
+    
+    if is_image:
+        frame = cv2.imread(source)
+        if frame is None:
+            print(f"⚠️ Failed to read static image: {source}")
+            frame = np.zeros((360, 640, 3), dtype=np.uint8)
+    elif source == "webcam":
         camera = cv2.VideoCapture(0)
         if not camera or not camera.isOpened():
             print("⚠️ No webcam detected. Falling back to local sample fire video.")
@@ -489,7 +496,7 @@ def generate_frames(source, conf=0.4):
     total_frames = 0
     start_play_time = time.time()
     
-    if camera and source not in ("webcam", "webcam1"):
+    if not is_image and camera and source not in ("webcam", "webcam1"):
         video_fps = camera.get(cv2.CAP_PROP_FPS)
         if not video_fps or video_fps <= 0:
             video_fps = 30.0
@@ -498,6 +505,28 @@ def generate_frames(source, conf=0.4):
     is_detecting = True
     
     while is_detecting:
+        if is_image:
+            # Process static images with CPU throttling (0.5s sleep)
+            img_to_process = frame.copy()
+            if model:
+                img_to_process, detections = process_frame(img_to_process, conf, draw_boxes=True)
+                if detections:
+                    detection_log.clear()
+                    detection_log.append({
+                        "time": datetime.now().strftime("%H:%M:%S"),
+                        "detections": detections
+                    })
+            
+            ret, buffer = cv2.imencode('.jpg', img_to_process, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if not ret:
+                time.sleep(0.5)
+                continue
+                
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+            time.sleep(0.5)
+            continue
+            
         if source not in ("webcam", "webcam1") and camera:
             # Enforce 1.0x playback speed by calculating target frame based on elapsed wall-clock time
             elapsed = time.time() - start_play_time
