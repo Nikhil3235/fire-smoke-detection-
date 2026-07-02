@@ -1075,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                       window.playSiren();
                                       
                                       if (!window.lastAlertLogTime || Date.now() - window.lastAlertLogTime > 5000) {
-                                          window.lastAlertLogTime = Date.now();
+                                          window.lastAlertLogTime = Date.now(); setTimeout(window.loadHistoryTable, 1000);
                                           window.addLog(`⚠ CRITICAL: Detected ${fireConfPct > 0 ? 'Fire (' + fireConfPct.toFixed(0) + '%)' : ''} ${smokeConfPct > 0 ? 'Smoke (' + smokeConfPct.toFixed(0) + '%)' : ''}`, true);
                                       }
                                   } else {
@@ -1167,6 +1167,13 @@ document.addEventListener('DOMContentLoaded', () => {
               webcamFrameId = null;
           }
           
+          animatedBoxes = [];
+          document.getElementById('fireVal').textContent = '0%';
+          document.getElementById('smokeVal').textContent = '0%';
+          document.getElementById('fpsVal').textContent = '0';
+          const peopleValEl = document.getElementById('peopleVal');
+          if (peopleValEl) peopleValEl.textContent = '0';
+          
           if (mediaRecorder && mediaRecorder.state !== 'inactive') {
               mediaRecorder.stop();
           }
@@ -1178,7 +1185,7 @@ document.addEventListener('DOMContentLoaded', () => {
               clearInterval(statsInterval);
               statsInterval = null;
           }
-          window.addLog("Monitoring stopped.");
+          window.addLog("Monitoring stopped. Statistics reset.");
       });
   };
 
@@ -1270,7 +1277,51 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>
               `;
           }).join('');
-      });
+  window.loadHistoryTable = () => {
+      const tbody = document.getElementById('historyTableBody');
+      if (!tbody) return;
+      
+      fetch('/api/history')
+      .then(r => r.json())
+      .then(data => {
+          if (!data || data.length === 0) {
+              tbody.innerHTML = `
+                  <tr id="historyEmptyRow">
+                      <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8rem;">No safety incidents logged yet. Monitoring active.</td>
+                  </tr>
+              `;
+              return;
+          }
+          
+          tbody.innerHTML = data.slice().reverse().map(row => {
+              let hazardBadge = '<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">NORMAL</span>';
+              if (row.fire_conf > 50 || row.smoke_conf > 50) {
+                  hazardBadge = '<span style="background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">🔥 CRITICAL</span>';
+              } else if (row.fire_conf > 0 || row.smoke_conf > 0) {
+                  hazardBadge = '<span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">⚠ WARNING</span>';
+              }
+              
+              return `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                      <td style="padding: 0.75rem 1rem; color: var(--text-primary); font-weight: 600;">${row.timestamp}</td>
+                      <td style="padding: 0.75rem 1rem; color: #ff4d00; font-weight: 700;">${row.fire_conf.toFixed(1)}%</td>
+                      <td style="padding: 0.75rem 1rem; color: #a0a0b0; font-weight: 700;">${row.smoke_conf.toFixed(1)}%</td>
+                      <td style="padding: 0.75rem 1rem; color: #00ff6a; font-weight: 700;"><i class="fas fa-users"></i> ${row.people_count}</td>
+                      <td style="padding: 0.75rem 1rem;">${hazardBadge}</td>
+                  </tr>
+              `;
+          }).join('');
+      }).catch(err => console.error("Error loading history:", err));
+  };
+
+  window.clearHistoryLog = () => {
+      if (confirm("Are you sure you want to clear all persistent safety logs from the server?")) {
+          fetch('/api/history/clear', { method: 'POST' })
+          .then(() => {
+              window.addLog("Persistent safety logs cleared.");
+              window.loadHistoryTable();
+          });
+      }
   };
 
   window.toggleRecording = () => {
@@ -1494,8 +1545,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   };
 
-  // Load initial gallery
+  // Load initial gallery & history table
   window.loadAlertGallery();
+  window.loadHistoryTable();
 
   console.log(
     '%c🔥 Fire & Smoke Detection AI — Interface Loaded',

@@ -245,7 +245,36 @@
                     </div>
                 </div>
             </div>
-      <div style="height: 4rem;"></div>   </div>
+      <div style="height: 2rem;"></div>   </div>
+      
+      <!-- ===== PERSISTENT LOGS TABLE ===== -->
+      <div class="panel-card reveal" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 1.8rem; margin-top: 2rem;">
+          <h3 style="font-family: 'Outfit'; font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+              <span><i class="fas fa-history" style="color: var(--fire-primary);"></i> Persistent Safety Incident Logs (Saved on Server)</span>
+              <button class="btn-secondary" onclick="clearHistoryLog()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border: 1px solid var(--border-subtle); cursor: pointer; text-decoration: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                  <i class="fas fa-trash-alt"></i> Clear Logs
+              </button>
+          </h3>
+          <div style="overflow-x: auto; max-height: 250px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 8px; background: rgba(0,0,0,0.2);">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; color: var(--text-secondary);">
+                  <thead>
+                      <tr style="background: rgba(255, 77, 0, 0.08); color: var(--text-primary); font-weight: 700; border-bottom: 1px solid var(--border-subtle);">
+                          <th style="padding: 0.75rem 1rem;">Date & Time</th>
+                          <th style="padding: 0.75rem 1rem;">Fire Max Confidence</th>
+                          <th style="padding: 0.75rem 1rem;">Smoke Max Confidence</th>
+                          <th style="padding: 0.75rem 1rem;">Trapped People Count</th>
+                          <th style="padding: 0.75rem 1rem;">Hazard Level</th>
+                      </tr>
+                  </thead>
+                  <tbody id="historyTableBody">
+                      <tr id="historyEmptyRow">
+                          <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8rem;">No safety incidents logged yet. Monitoring active.</td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+      </div>
+      
         </div>
     </section>
 

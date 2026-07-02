@@ -91,6 +91,37 @@ def load_model(weights_path="models/best.pt"):
         return False
 
 
+HISTORY_FILE = "history.json"
+
+def log_to_history(fire_conf, smoke_conf, people_count):
+    """Log detection event to persistent history.json file."""
+    import json
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "fire_conf": round(fire_conf, 1),
+        "smoke_conf": round(smoke_conf, 1),
+        "people_count": people_count
+    }
+    
+    history_data = []
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                history_data = json.load(f)
+        except Exception:
+            history_data = []
+            
+    history_data.append(entry)
+    if len(history_data) > 500:
+        history_data.pop(0)
+        
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history_data, f, indent=4)
+    except Exception as e:
+        print(f"Error saving history: {e}")
+
+
 def send_sms_alert(alert_type, confidence):
     """Send SMS via Twilio if enabled."""
     if not sms_config.get("enabled"):
@@ -136,10 +167,10 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
         # Too dark, return immediately with empty detections to save CPU and avoid false alarms in pitch black
         return frame, []
     
-    # Run detection on Person Model first (if loaded) to identify screens and humans
+    # Run detection on Person Model first (if loaded) with imgsz=640 for maximum accuracy and zero cold-start delay
     person_results = None
     if model_person:
-        person_results = model_person.predict(frame, conf=0.45, imgsz=320, verbose=False)
+        person_results = model_person.predict(frame, conf=0.25, imgsz=640, verbose=False)
     
     detections = []
     screen_boxes = []
@@ -164,8 +195,8 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                         
                 elif class_id == 0:  # Person
                     person_boxes.append((x1, y1, x2, y2))
-                    # Heuristic for Living vs Doll
-                    if confidence > 0.6:
+                    # Heuristic for Living vs Doll (0.35 threshold catches humans instantly)
+                    if confidence > 0.35:
                         label = f"Living Person {person_count}"
                         person_count += 1
                     else:
@@ -272,6 +303,24 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
         # Send SMS alert in background thread
         threading.Thread(target=send_sms_alert, args=(alert_label, max_conf)).start()
         
+    # Persistent History Logging on critical detection
+    if fire_detected or smoke_detected:
+        last_history_log = last_alert_time.get(session_id + "_history", 0)
+        if current_time - last_history_log > 3.0:
+            last_alert_time[session_id + "_history"] = current_time
+            # Calculate actual fire/smoke max confidence
+            fire_val = 0.0
+            smoke_val = 0.0
+            for d in detections:
+                if d["class"] == "Fire":
+                    fire_val = max(fire_val, d["confidence"])
+                elif d["class"] == "Smoke":
+                    smoke_val = max(smoke_val, d["confidence"])
+            
+            # Count living people
+            living_people_count = sum(1 for d in detections if "Living Person" in d["class"])
+            log_to_history(fire_val, smoke_val, living_people_count)
+            
     # Draw info overlay
     overlay = frame.copy()
     cv2.rectangle(overlay, (10, 10), (340, 80), (0, 0, 0), -1)
@@ -371,6 +420,27 @@ def generate_frames(source, conf=0.4):
         camera.release()
 
 # ── Flask Routes ──────────────────────────────────────────────
+
+@app.route('/api/history')
+def get_history():
+    import json
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return jsonify(data)
+        except Exception:
+            return jsonify([])
+    return jsonify([])
+
+@app.route('/api/history/clear', methods=['POST'])
+def clear_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            os.remove(HISTORY_FILE)
+        except Exception:
+            pass
+    return jsonify({"success": True})
 
 @app.route('/')
 def index():
