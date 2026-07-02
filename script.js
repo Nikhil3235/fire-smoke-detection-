@@ -820,9 +820,14 @@ document.addEventListener('DOMContentLoaded', () => {
               
               if (!window.currentFacingMode) window.currentFacingMode = 'environment';
               
-              webcamStream = await navigator.mediaDevices.getUserMedia({ 
-                  video: { width: 640, height: 360, facingMode: window.currentFacingMode } 
-              });
+              try {
+                  webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                      video: { width: 640, height: 360, facingMode: window.currentFacingMode } 
+                  });
+              } catch (constraintsErr) {
+                  console.warn("Requested constraints failed, retrying with basic video config...", constraintsErr);
+                  webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              }
               
               const webcamVideo = document.getElementById('webcamVideo');
               const detectionCanvas = document.getElementById('detectionCanvas');
