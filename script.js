@@ -1289,6 +1289,9 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>
               `;
           }).join('');
+      });
+  };
+
   window.loadHistoryTable = () => {
       const tbody = document.getElementById('historyTableBody');
       if (!tbody) return;
