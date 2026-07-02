@@ -154,8 +154,86 @@ def send_sms_alert(alert_type, confidence):
         print(f"📱 [SMS SIMULATION] Sending alert to {sms_config['to_number']}: {message_body}")
 
 
+person_tracks = {}
+
+def update_person_tracks(session_id, current_person_boxes):
+    """Update tracking history for persons to identify static photos."""
+    global person_tracks
+    if session_id not in person_tracks:
+        person_tracks[session_id] = []
+        
+    tracks = person_tracks[session_id]
+    updated_tracks = []
+    
+    for box in current_person_boxes:
+        x1, y1, x2, y2 = box
+        best_track = None
+        best_iou = 0.6
+        for t in tracks:
+            tx1, ty1, tx2, ty2 = t["bbox"]
+            ix1 = max(x1, tx1)
+            iy1 = max(y1, ty1)
+            ix2 = min(x2, tx2)
+            iy2 = min(y2, ty2)
+            if ix1 < ix2 and iy1 < iy2:
+                intersection = (ix2 - ix1) * (iy2 - iy1)
+                union = (x2 - x1) * (y2 - y1) + (tx2 - tx1) * (ty2 - ty1) - intersection
+                iou = intersection / union if union > 0 else 0
+                if iou > best_iou:
+                    best_iou = iou
+                    best_track = t
+                    
+        if best_track:
+            best_track["bbox"] = [x1, y1, x2, y2]
+            best_track["history"].append([x1, y1, x2, y2])
+            if len(best_track["history"]) > 15:
+                best_track["history"].pop(0)
+            best_track["missed_frames"] = 0
+            updated_tracks.append(best_track)
+            tracks.remove(best_track)
+        else:
+            new_track = {
+                "bbox": [x1, y1, x2, y2],
+                "history": [[x1, y1, x2, y2]],
+                "missed_frames": 0,
+                "is_static": False
+            }
+            updated_tracks.append(new_track)
+            
+    for t in tracks:
+        t["missed_frames"] += 1
+        if t["missed_frames"] <= 3:
+            updated_tracks.append(t)
+            
+    for t in updated_tracks:
+        if len(t["history"]) >= 8:
+            xs = [h[0] for h in t["history"]]
+            ys = [h[1] for h in t["history"]]
+            ws = [h[2] - h[0] for h in t["history"]]
+            hs = [h[3] - h[1] for h in t["history"]]
+            
+            std_x = np.std(xs)
+            std_y = np.std(ys)
+            std_w = np.std(ws)
+            std_h = np.std(hs)
+            
+            # Static check: standard deviation in coordinates should be very small (< 1.2 pixels)
+            if max(std_x, std_y, std_w, std_h) < 1.2:
+                t["is_static"] = True
+            else:
+                t["is_static"] = False
+                
+    person_tracks[session_id] = updated_tracks
+    
+    static_boxes = []
+    for t in updated_tracks:
+        if t["is_static"]:
+            static_boxes.append(t["bbox"])
+    return static_boxes
+
+
 def process_frame(frame, conf_threshold=0.4, session_id="default"):
-    """Process a single frame for fire/smoke detection."""
+    """Process a single frame for fire/smoke/people detection."""
     global current_fps, last_alert_time
     
     start_time = time.time()
@@ -176,6 +254,22 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     screen_boxes = []
     person_boxes = []
     
+    # Gather raw person bboxes first
+    raw_person_boxes = []
+    if person_results:
+        for result in person_results:
+            boxes = result.boxes
+            if boxes is None:
+                continue
+            for box in boxes:
+                class_id = int(box.cls[0])
+                if class_id == 0:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                    raw_person_boxes.append([x1, y1, x2, y2])
+                    
+    # Identify which person boxes are static (photo frames)
+    static_person_boxes = update_person_tracks(session_id, raw_person_boxes)
+    
     # Process Screens and People
     if person_results:
         person_count = 1
@@ -195,12 +289,20 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                         
                 elif class_id == 0:  # Person
                     person_boxes.append((x1, y1, x2, y2))
-                    # Heuristic for Living vs Doll (0.35 threshold catches humans instantly)
-                    if confidence > 0.35:
+                    
+                    # Check if this person box is static (photo frame)
+                    is_static = False
+                    for sbox in static_person_boxes:
+                        if sbox == [x1, y1, x2, y2]:
+                            is_static = True
+                            break
+                            
+                    # Heuristic for Living vs Doll vs Static Photo
+                    if confidence > 0.35 and not is_static:
                         label = f"Living Person {person_count}"
                         person_count += 1
                     else:
-                        label = "Doll"
+                        label = "Doll" if not is_static else "Photo Frame"
                         
                     detections.append({
                         "class": label,
@@ -288,7 +390,14 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     current_time = time.time()
     session_last_alert = last_alert_time.get(session_id, 0)
     
-    if (fire_detected or smoke_detected) and (current_time - session_last_alert > ALERT_COOLDOWN):
+    # Only auto-save if a real high-confidence hazard is detected to avoid false captures on background noise
+    real_hazard_detected = False
+    for d in detections:
+        if d["class"] in ("Fire", "Smoke") and d["confidence"] >= 55.0:
+            real_hazard_detected = True
+            break
+            
+    if real_hazard_detected and (current_time - session_last_alert > ALERT_COOLDOWN):
         last_alert_time[session_id] = current_time
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         alert_filename = f"alert_{timestamp}.jpg"

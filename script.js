@@ -1174,6 +1174,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const peopleValEl = document.getElementById('peopleVal');
           if (peopleValEl) peopleValEl.textContent = '0';
           
+          const gallery = document.getElementById('alertGallery');
+          if (gallery) {
+              gallery.innerHTML = '<div style="grid-column: span 2; text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8rem;">No captures saved yet.</div>';
+          }
+          const alertsCountEl = document.getElementById('alertsCount');
+          if (alertsCountEl) alertsCountEl.textContent = '0';
+          
           if (mediaRecorder && mediaRecorder.state !== 'inactive') {
               mediaRecorder.stop();
           }
