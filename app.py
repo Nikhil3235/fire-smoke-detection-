@@ -120,22 +120,23 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
     
     start_time = time.time()
     
-    # Run detection on Fire/Smoke Model
-    results = model.predict(frame, conf=conf_threshold, imgsz=320, verbose=False)
+    # Pitch-black sensor fix: Check average frame brightness to prevent ghost detections
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    avg_brightness = np.mean(gray)
+    if avg_brightness < 15:
+        # Too dark, return immediately with empty detections to save CPU and avoid false alarms in pitch black
+        return frame, []
     
-    # Run detection on Person Model (if loaded)
+    # Run detection on Person Model first (if loaded) to identify screens and humans
     person_results = None
     if model_person:
         person_results = model_person.predict(frame, conf=0.45, imgsz=320, verbose=False)
     
     detections = []
-    fire_detected = False
-    smoke_detected = False
-    max_conf = 0.0
-    alert_label = ""
-    
-    # Process Screens and People first
     screen_boxes = []
+    person_boxes = []
+    
+    # Process Screens and People
     if person_results:
         person_count = 1
         for result in person_results:
@@ -153,6 +154,7 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                         screen_boxes.append((x1, y1, x2, y2))
                         
                 elif class_id == 0:  # Person
+                    person_boxes.append((x1, y1, x2, y2))
                     # Heuristic for Living vs Doll
                     if confidence > 0.6:
                         label = f"Living Person {person_count}"
@@ -165,6 +167,14 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                         "confidence": round(confidence * 100, 1),
                         "bbox": [x1, y1, x2, y2]
                     })
+    
+    # Run detection on Fire/Smoke Model
+    results = model.predict(frame, conf=conf_threshold, imgsz=320, verbose=False)
+    
+    fire_detected = False
+    smoke_detected = False
+    max_conf = 0.0
+    alert_label = ""
     
     # Process Fire/Smoke
     for result in results:
@@ -181,10 +191,27 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                 continue
             
             label = CLASS_NAMES.get(class_id, f"Class {class_id}")
-            
-            # Anti-Spoofing Heuristic: Check if fire is ON a screen
-            is_spoof = False
             fire_area = (x2 - x1) * (y2 - y1)
+            
+            # Anti-Spoofing Heuristic 1: Check if fire is ON a person (false positive face/shirt detection)
+            is_on_person = False
+            for (px1, py1, px2, py2) in person_boxes:
+                ix1 = max(x1, px1)
+                iy1 = max(y1, py1)
+                ix2 = min(x2, px2)
+                iy2 = min(y2, py2)
+                if ix1 < ix2 and iy1 < iy2:
+                    intersection_area = (ix2 - ix1) * (iy2 - iy1)
+                    # If more than 30% of the fire box overlaps with a person, ignore it as a face/shirt false positive!
+                    if fire_area > 0 and (intersection_area / fire_area) > 0.3:
+                        is_on_person = True
+                        break
+            
+            if is_on_person:
+                continue  # Skip drawing this false positive entirely!
+            
+            # Anti-Spoofing Heuristic 2: Check if fire is ON a screen
+            is_spoof = False
             for (sx1, sy1, sx2, sy2) in screen_boxes:
                 # Calculate Intersection
                 ix1 = max(x1, sx1)
@@ -311,6 +338,11 @@ def generate_frames(source, conf=0.4):
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
+
+
+@app.route('/live')
+def live():
+    return send_from_directory('.', 'live.html')
 
 
 @app.route('/video_feed')

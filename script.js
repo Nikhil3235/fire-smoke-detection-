@@ -861,12 +861,109 @@ document.addEventListener('DOMContentLoaded', () => {
               detectionCanvas.height = 360;
               const canvasCtx = detectionCanvas.getContext('2d');
               
-              const fps = 20; // 20 FPS for silky smooth bounding box tracking!
+              const fps = 12; // Max 12 FPS for network requests, LERP handles 60 FPS visual rendering
               const interval = 1000 / fps;
               let lastTime = 0;
               let frameSeq = 0;
               let lastProcessedSeq = 0;
               let concurrentRequests = 0;
+              let animatedBoxes = [];
+              
+              // Helper to match detection to existing animated bounding boxes for smooth LERP
+              const findClosestBox = (detClass, x, y, w, h) => {
+                  let bestMatch = null;
+                  let minDistance = 100000;
+                  
+                  animatedBoxes.forEach(box => {
+                      if (box.class === detClass && !box.activeTarget) {
+                          const bcx = box.x + box.w / 2;
+                          const bcy = box.y + box.h / 2;
+                          const dcx = x + w / 2;
+                          const dcy = y + h / 2;
+                          const dist = Math.sqrt((bcx - dcx) ** 2 + (bcy - dcy) ** 2);
+                          
+                          if (dist < minDistance && dist < 150) { // Max distance limit to prevent sliding between distinct entities
+                              minDistance = dist;
+                              bestMatch = box;
+                          }
+                      }
+                  });
+                  return bestMatch;
+              };
+              
+              // 60 FPS Bounding Box Animation Loop (Jarvis Style)
+              const drawBoxesLoop = () => {
+                  if (!detecting) return;
+                  
+                  canvasCtx.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
+                  
+                  animatedBoxes.forEach(box => {
+                      // Smooth LERP (Linear Interpolation) coordinates towards targets
+                      box.x += (box.targetX - box.x) * 0.25;
+                      box.y += (box.targetY - box.y) * 0.25;
+                      box.w += (box.targetW - box.w) * 0.25;
+                      box.h += (box.targetH - box.h) * 0.25;
+                      box.opacity += (box.targetOpacity - box.opacity) * 0.25;
+                      box.confidence += (box.targetConf - box.confidence) * 0.25;
+                      
+                      if (box.opacity > 0.01) {
+                          let boxColor = '#8a90a0'; // Default gray
+                          let shadowColor = 'rgba(138, 144, 160, 0.3)';
+                          let textColor = '#ffffff';
+                          
+                          if (box.class === 'Fire') {
+                              boxColor = '#ff4d00';
+                              shadowColor = 'rgba(255, 77, 0, 0.4)';
+                          } else if (box.class.includes('Living Person')) {
+                              boxColor = '#00ff6a';
+                              shadowColor = 'rgba(0, 255, 106, 0.4)';
+                              textColor = '#000000';
+                          } else if (box.class.includes('Fake')) {
+                              boxColor = '#ffcc00'; // Yellow for spoofed fire
+                              shadowColor = 'rgba(255, 204, 0, 0.4)';
+                              textColor = '#000000';
+                          }
+                          
+                          canvasCtx.save();
+                          canvasCtx.globalAlpha = box.opacity;
+                          
+                          canvasCtx.strokeStyle = boxColor;
+                          canvasCtx.lineWidth = Math.max(2, Math.round(detectionCanvas.width / 150));
+                          canvasCtx.shadowColor = shadowColor;
+                          canvasCtx.shadowBlur = 8;
+                          
+                          // Bounding Box
+                          canvasCtx.strokeRect(box.x, box.y, box.w, box.h);
+                          
+                          // Label Tag
+                          canvasCtx.fillStyle = boxColor;
+                          canvasCtx.shadowBlur = 0; // reset shadow for text
+                          
+                          let labelText = `${box.class} ${box.confidence.toFixed(0)}%`;
+                          if (box.class.includes('Person') || box.class === 'Doll') {
+                              labelText = box.class.replace('Living ', '');
+                          }
+                          
+                          canvasCtx.font = 'bold 12px Outfit, sans-serif';
+                          const textWidth = canvasCtx.measureText(labelText).width;
+                          
+                          // Draw tag background
+                          canvasCtx.fillRect(box.x - 1, box.y - 20, textWidth + 12, 20);
+                          canvasCtx.fillStyle = textColor;
+                          canvasCtx.fillText(labelText, box.x + 5, box.y - 6);
+                          
+                          canvasCtx.restore();
+                      }
+                  });
+                  
+                  // Filter out fully faded boxes
+                  animatedBoxes = animatedBoxes.filter(box => !(box.targetOpacity === 0 && box.opacity < 0.05));
+                  
+                  requestAnimationFrame(drawBoxesLoop);
+              };
+              
+              // Start animation loop
+              requestAnimationFrame(drawBoxesLoop);
               
               const captureLoop = (timestamp) => {
                   if (!detecting) return;
@@ -877,23 +974,22 @@ document.addEventListener('DOMContentLoaded', () => {
                       const vw = webcamVideo.videoWidth;
                       const vh = webcamVideo.videoHeight;
                       
-                      // Allow up to 4 concurrent requests to keep a smooth pipeline over the network
-                      if (vw > 0 && vh > 0 && concurrentRequests < 4) {
+                      // Strict ping-pong (max 1 concurrent request) to eliminate queue lag entirely
+                      if (vw > 0 && vh > 0 && concurrentRequests < 1) {
                           concurrentRequests++;
                           frameSeq++;
                           const currentSeq = frameSeq;
                           
-                          // Dynamically scale resolution while preserving aspect ratio! (Crucial for mobile portrait cameras)
+                          // Dynamically scale resolution while preserving aspect ratio
                           const scale = Math.min(640 / vw, 640 / vh);
                           const targetW = Math.round(vw * scale);
                           const targetH = Math.round(vh * scale);
                           
-                          // Use dynamic resolution so we don't squash mobile cameras
                           hiddenCanvas.width = targetW;
                           hiddenCanvas.height = targetH;
                           hiddenCtx.drawImage(webcamVideo, 0, 0, targetW, targetH);
                           
-                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.8); // 80% quality for better smoke detection
+                          const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.8);
                           const threshold = document.getElementById('thresholdSlider').value / 100;
                           
                           fetch('/api/process_frame', {
@@ -905,71 +1001,64 @@ document.addEventListener('DOMContentLoaded', () => {
                           .then(data => {
                               concurrentRequests--;
                               if (data.success && detecting) {
-                                  // Time-travel prevention: discard older frames that arrived late!
+                                  // Time-travel prevention: discard older late responses
                                   if (data.seq < lastProcessedSeq) return;
                                   lastProcessedSeq = data.seq;
                                   
-                                  // Update detection canvas to match the exact aspect ratio!
+                                  // Update detection canvas dimensions to match
                                   if (detectionCanvas.width !== targetW || detectionCanvas.height !== targetH) {
                                       detectionCanvas.width = targetW;
                                       detectionCanvas.height = targetH;
                                   }
                                   
-                                  // Clear detection canvas
-                                  canvasCtx.clearRect(0, 0, targetW, targetH);
+                                  // Mark all animated boxes as inactive target for update
+                                  animatedBoxes.forEach(box => box.activeTarget = false);
                                   
-                                  // Draw neon premium bounding boxes locally in real-time
+                                  // Match and update animated boxes with new detections
                                   if (data.detections && data.detections.length > 0) {
                                       data.detections.forEach(d => {
-                                          // Coordinates match the dynamic resolution
                                           const x1 = d.bbox[0];
                                           const y1 = d.bbox[1];
-                                          const x2 = d.bbox[2];
-                                          const y2 = d.bbox[3];
+                                          const w = d.bbox[2] - x1;
+                                          const h = d.bbox[3] - y1;
                                           
-                                          const w = x2 - x1;
-                                          const h = y2 - y1;
-                                          
-                                          let boxColor = '#8a90a0'; // Default gray
-                                          let shadowColor = 'rgba(138, 144, 160, 0.3)';
-                                          let textColor = '#ffffff';
-                                          
-                                          if (d.class === 'Fire') {
-                                              boxColor = '#ff4d00';
-                                              shadowColor = 'rgba(255, 77, 0, 0.4)';
-                                          } else if (d.class.includes('Living Person')) {
-                                              boxColor = '#00ff6a';
-                                              shadowColor = 'rgba(0, 255, 106, 0.4)';
-                                              textColor = '#000000';
-                                          } else if (d.class.includes('Fake')) {
-                                              boxColor = '#ffcc00'; // Yellow for spoofed fire
-                                              shadowColor = 'rgba(255, 204, 0, 0.4)';
-                                              textColor = '#000000';
+                                          const matchedBox = findClosestBox(d.class, x1, y1, w, h);
+                                          if (matchedBox) {
+                                              matchedBox.targetX = x1;
+                                              matchedBox.targetY = y1;
+                                              matchedBox.targetW = w;
+                                              matchedBox.targetH = h;
+                                              matchedBox.targetConf = d.confidence;
+                                              matchedBox.targetOpacity = 1.0;
+                                              matchedBox.activeTarget = true;
+                                          } else {
+                                              // Create a new box with 0 opacity (fades in)
+                                              animatedBoxes.push({
+                                                  class: d.class,
+                                                  x: x1,
+                                                  y: y1,
+                                                  w: w,
+                                                  h: h,
+                                                  confidence: d.confidence,
+                                                  opacity: 0.0,
+                                                  targetX: x1,
+                                                  targetY: y1,
+                                                  targetW: w,
+                                                  targetH: h,
+                                                  targetConf: d.confidence,
+                                                  targetOpacity: 1.0,
+                                                  activeTarget: true
+                                              });
                                           }
-                                          
-                                          canvasCtx.strokeStyle = boxColor;
-                                          canvasCtx.lineWidth = Math.max(2, Math.round(targetW / 150));
-                                          canvasCtx.shadowColor = shadowColor;
-                                          canvasCtx.shadowBlur = 8;
-                                          
-                                          // Bounding box
-                                          canvasCtx.strokeRect(x1, y1, w, h);
-                                          
-                                          // Label tag
-                                          canvasCtx.fillStyle = boxColor;
-                                          canvasCtx.shadowBlur = 0; // reset shadow for text
-                                          let labelText = `${d.class} ${d.confidence.toFixed(0)}%`;
-                                          if (d.class.includes('Person') || d.class === 'Doll') {
-                                              labelText = d.class.replace('Living ', ''); // "Person 1" instead of "Living Person 1 85%"
-                                          }
-                                          canvasCtx.font = 'bold 12px Outfit, sans-serif';
-                                          const textWidth = canvasCtx.measureText(labelText).width;
-                                          
-                                          canvasCtx.fillRect(x1 - 1, y1 - 20, textWidth + 12, 20);
-                                          canvasCtx.fillStyle = textColor;
-                                          canvasCtx.fillText(labelText, x1 + 5, y1 - 6);
                                       });
                                   }
+                                  
+                                  // Fade out boxes that no longer have a matched detection
+                                  animatedBoxes.forEach(box => {
+                                      if (!box.activeTarget) {
+                                          box.targetOpacity = 0.0;
+                                      }
+                                  });
                                   
                                   document.getElementById('fpsVal').textContent = data.fps;
                                   document.getElementById('fireVal').textContent = (data.fire_conf).toFixed(0) + '%';
