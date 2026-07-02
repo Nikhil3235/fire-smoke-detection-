@@ -62,7 +62,7 @@ CLASS_NAMES = {0: "Fire", 1: "Smoke"}
 
 
 def load_model(weights_path="models/best.pt"):
-    """Load the YOLOv8 models."""
+    """Load and warm up the YOLOv8 models."""
     global model, model_person
     try:
         from ultralytics import YOLO
@@ -76,6 +76,15 @@ def load_model(weights_path="models/best.pt"):
         print("⏳ Loading YOLOv8n for Person Detection...")
         model_person = YOLO("yolov8n.pt") 
         print("✅ YOLOv8n Person Model Loaded Successfully!")
+        
+        # Warmup both models to prevent first-inference cold-start delay (takes 10-30s on CPU)
+        print("⏳ Warming up YOLO models with dummy frames...")
+        dummy_frame = np.zeros((320, 320, 3), dtype=np.uint8)
+        model.predict(dummy_frame, imgsz=320, verbose=False)
+        if model_person:
+            model_person.predict(dummy_frame, imgsz=320, verbose=False)
+        print("✅ Models Warmed Up Successfully! Ready for instant 0.1s predictions.")
+        
         return True
     except Exception as e:
         print(f"❌ Error loading model: {e}")
