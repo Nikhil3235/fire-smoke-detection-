@@ -1420,38 +1420,67 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.uploadAndProcess = () => {
-      const formData = new FormData(document.getElementById('uploadForm'));
-      formData.append("session_id", window.sessionId);
-      window.addLog("Uploading file to server...");
+      const formEl = document.getElementById('uploadForm');
+      if (!formEl) return;
       
-      fetch('/upload', {
-          method: 'POST',
-          body: formData
-      }).then(r => r.json()).then(data => {
-          if (data.success) {
-              window.addLog("File uploaded successfully. Initializing inference stream...");
-              
-              const select = document.getElementById('sourceSelect');
-              let optionExists = false;
-              for (let i=0; i<select.options.length; i++) {
-                  if (select.options[i].value === data.filepath) {
-                      optionExists = true;
-                      break;
-                  }
-              }
-              if (!optionExists) {
-                  const opt = document.createElement('option');
-                  opt.value = data.filepath;
-                  opt.innerHTML = "🎬 Uploaded: " + data.filename;
-                  select.appendChild(opt);
-              }
-              
-              select.value = data.filepath;
-              window.startStream();
-          } else {
-              alert("Upload failed: " + data.error);
+      const formData = new FormData(formEl);
+      formData.append("session_id", window.sessionId);
+      
+      window.addLog("Initializing upload...");
+      
+      const xhr = new XMLHttpRequest();
+      
+      // Track upload progress
+      xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+              const percentComplete = Math.round((e.loaded / e.total) * 100);
+              window.addLog(`Uploading file: ${percentComplete}% complete...`);
           }
       });
+      
+      xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+              try {
+                  const data = JSON.parse(xhr.responseText);
+                  if (data.success) {
+                      window.addLog("✅ File uploaded successfully. Initializing inference stream...");
+                      
+                      const select = document.getElementById('sourceSelect');
+                      if (select) {
+                          let optionExists = false;
+                          for (let i = 0; i < select.options.length; i++) {
+                              if (select.options[i].value === data.filepath) {
+                                  optionExists = true;
+                                  break;
+                              }
+                          }
+                          if (!optionExists) {
+                              const opt = document.createElement('option');
+                              opt.value = data.filepath;
+                              opt.innerHTML = "🎬 Uploaded: " + data.filename;
+                              select.appendChild(opt);
+                          }
+                          select.value = data.filepath;
+                      }
+                      window.startStream();
+                  } else {
+                      window.addLog(`❌ Upload failed: ${data.error}`, true);
+                      alert("Upload failed: " + data.error);
+                  }
+              } catch (err) {
+                  window.addLog("❌ Upload parsed error.", true);
+              }
+          } else {
+              window.addLog(`❌ Server error during upload: ${xhr.status}`, true);
+          }
+      });
+      
+      xhr.addEventListener("error", () => {
+          window.addLog("❌ Network error during upload.", true);
+      });
+      
+      xhr.open("POST", "/upload");
+      xhr.send(formData);
   };
 
   window.triggerManualScreenshot = () => {

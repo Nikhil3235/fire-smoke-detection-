@@ -289,7 +289,7 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
 
 
 def generate_frames(source, conf=0.4):
-    """Generator function for video streaming."""
+    """Generator function for video streaming with frame skipping to maintain 1.0x realtime speed."""
     global is_detecting, camera
     
     if source == "webcam":
@@ -310,13 +310,38 @@ def generate_frames(source, conf=0.4):
             camera = cv2.VideoCapture(source)
     else:
         camera = cv2.VideoCapture(source)
+        
+    # Enforce real-time playback speed for video files by skipping frames if CPU processing is slower than video FPS
+    video_fps = 30.0
+    total_frames = 0
+    start_play_time = time.time()
+    
+    if camera and source not in ("webcam", "webcam1"):
+        video_fps = camera.get(cv2.CAP_PROP_FPS)
+        if not video_fps or video_fps <= 0:
+            video_fps = 30.0
+        total_frames = camera.get(cv2.CAP_PROP_FRAME_COUNT)
     
     is_detecting = True
     
     while is_detecting:
+        if source not in ("webcam", "webcam1") and camera:
+            # Enforce 1.0x playback speed by calculating target frame based on elapsed wall-clock time
+            elapsed = time.time() - start_play_time
+            target_frame = int(elapsed * video_fps)
+            
+            if total_frames > 0 and target_frame >= total_frames:
+                # Loop video from start
+                start_play_time = time.time()
+                camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            else:
+                camera.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                
         success, frame = camera.read()
         if not success:
             if source not in ("webcam", "webcam1"):
+                # If read failed or loop ended prematurely, reset pointer
+                start_play_time = time.time()
                 camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 continue
             break
@@ -338,6 +363,9 @@ def generate_frames(source, conf=0.4):
         
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        
+        # Microscopic sleep to yield CPU cycles to Flask server upload & API request handlers
+        time.sleep(0.01)
     
     if camera:
         camera.release()
