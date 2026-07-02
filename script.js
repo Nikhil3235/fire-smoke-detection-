@@ -746,8 +746,15 @@ document.addEventListener('DOMContentLoaded', () => {
           sirenInterval = null;
       }
       if (window.activeOsc) {
-          try { window.activeOsc.stop(); } catch(e) {}
+          try { 
+              window.activeOsc.stop(); 
+              window.activeOsc.disconnect();
+          } catch(e) {}
           window.activeOsc = null;
+      }
+      if (window.activeGain) {
+          try { window.activeGain.disconnect(); } catch(e) {}
+          window.activeGain = null;
       }
   };
 
@@ -1225,6 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!detecting) return;
       
       fetch('/stats').then(r => r.json()).then(data => {
+          if (!detecting) return;
           document.getElementById('fpsVal').textContent = data.fps;
           
           let fireConf = 0;

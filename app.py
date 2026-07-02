@@ -232,7 +232,7 @@ def update_person_tracks(session_id, current_person_boxes):
     return static_boxes
 
 
-def process_frame(frame, conf_threshold=0.4, session_id="default"):
+def process_frame(frame, conf_threshold=0.4, session_id="default", draw_boxes=False):
     """Process a single frame for fire/smoke/people detection."""
     global current_fps, last_alert_time
     
@@ -301,14 +301,21 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                     if confidence > 0.35 and not is_static:
                         label = f"Living Person {person_count}"
                         person_count += 1
+                        box_color = (10, 255, 10)  # Green
                     else:
                         label = "Doll" if not is_static else "Photo Frame"
+                        box_color = (150, 150, 160)  # Gray
                         
                     detections.append({
                         "class": label,
                         "confidence": round(confidence * 100, 1),
                         "bbox": [x1, y1, x2, y2]
                     })
+                    
+                    if draw_boxes:
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
+                        cv2.putText(frame, f"{label} {confidence*100:.0f}%", (x1, y1 - 8),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, box_color, 2)
     
     # Run detection on Fire/Smoke Model
     results = model.predict(frame, conf=conf_threshold, imgsz=320, verbose=False)
@@ -370,11 +377,14 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
             
             if is_spoof:
                 label = f"Fake {label} (Screen)"
+                box_color = (0, 165, 255)  # Orange
             else:
                 if label == "Fire":
                     fire_detected = True
+                    box_color = (0, 0, 255)  # Red
                 elif label == "Smoke":
                     smoke_detected = True
+                    box_color = (255, 120, 0)  # Blue/Orange
                     
             if confidence > max_conf:
                 max_conf = confidence
@@ -385,6 +395,11 @@ def process_frame(frame, conf_threshold=0.4, session_id="default"):
                 "confidence": round(confidence * 100, 1),
                 "bbox": [x1, y1, x2, y2]
             })
+            
+            if draw_boxes:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
+                cv2.putText(frame, f"{label} {confidence*100:.0f}%", (x1, y1 - 8),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, box_color, 2)
     
     # Auto-save frame and send notifications (with cooldown)
     current_time = time.time()
@@ -493,7 +508,15 @@ def generate_frames(source, conf=0.4):
                 start_play_time = time.time()
                 camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
             else:
-                camera.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                # Resilient fast frame skipping using grab() instead of slow seek
+                current_frame = camera.get(cv2.CAP_PROP_POS_FRAMES)
+                frames_to_skip = target_frame - current_frame
+                if frames_to_skip > 0:
+                    if frames_to_skip > 30:
+                        camera.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                    else:
+                        for _ in range(int(frames_to_skip) - 1):
+                            camera.grab()
                 
         success, frame = camera.read()
         if not success:
@@ -505,7 +528,7 @@ def generate_frames(source, conf=0.4):
             break
         
         if model:
-            frame, detections = process_frame(frame, conf)
+            frame, detections = process_frame(frame, conf, draw_boxes=True)
             
             if detections:
                 detection_log.append({
